@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, useDragControls } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Task, useTaskFlowStore } from '@/lib/store/taskflow-store';
 import { cn } from '@/lib/utils';
-import { GripVertical, AlertCircle, Check } from 'lucide-react';
+import { Calendar, User, MoreHorizontal, Pencil, Trash } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from "@/components/ui/button";
 
 interface TaskNodeProps {
     task: Task;
@@ -15,25 +16,29 @@ interface TaskNodeProps {
 export const TaskNode: React.FC<TaskNodeProps> = ({
     task,
     onConnectStart,
-    onConnectEnd,
+    // onConnectEnd, // Handled implicitly by drop on container? No, we need to pass it up or handle here.
+    // Actually, parent handles drop logic.
     isConnecting
 }) => {
-    const { updateTaskPosition, toggleTaskDone, isTaskBlocked, getBlockers, updateTaskTitle } = useTaskFlowStore();
+    const { updateTaskPosition, updateTaskTitle, deleteTask, updateTask } = useTaskFlowStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [localTitle, setLocalTitle] = useState(task.title);
-    const nodeRef = useRef<HTMLDivElement>(null);
 
-    const blocked = isTaskBlocked(task.id);
-    const blockers = getBlockers(task.id);
+    // Calculate color based on status
+    const statusColor = {
+        'TODO': 'bg-blue-500 text-white',
+        'DOING': 'bg-orange-500 text-white',
+        'DONE': 'bg-green-500 text-white'
+    }[task.phase] || 'bg-slate-500 text-white';
 
-    // Update local title if task updates from outside
-    useEffect(() => {
-        setLocalTitle(task.title);
-    }, [task.title]);
+    const statusLabel = {
+        'TODO': 'To Do',
+        'DOING': 'In Progress',
+        'DONE': 'Completed'
+    }[task.phase];
 
     const handleDragEnd = (_: any, info: any) => {
-        // Round to nearest pixel to avoid sub-pixel blurring
         const newX = Math.round(task.x + info.offset.x);
         const newY = Math.round(task.y + info.offset.y);
         updateTaskPosition(task.id, newX, newY);
@@ -47,79 +52,43 @@ export const TaskNode: React.FC<TaskNodeProps> = ({
     };
 
     const onConnectionHandlePointerDown = (e: React.PointerEvent) => {
-        e.stopPropagation(); // Prevent drag of the card
-        e.preventDefault(); // Prevent text selection/native drag
-        if (nodeRef.current) {
-            const rect = nodeRef.current.getBoundingClientRect();
-            // Calculate center of the right edge relative to the canvas? 
-            // Actually, the parent handles the coordinate space.
-            // We pass the starting client coordinates or similar, 
-            // but the Canvas needs to convert them.
-            // Let's pass the NODE's current center-right coordinate.
-            // But wait, the Store stores X/Y. 
-            // The visual element might have moved via transform if dragging?
-            // No, we only allow connection when not dragging the node.
-
-            // Let's pass the event to let parent handle coords
-            onConnectStart(task.id, task.x + 200, task.y + 40); // 200 width, 40 approx half height
-        }
-    };
-
-    // Border colors
-    const getBorderColor = () => {
-        if (task.done) return 'border-green-500 bg-green-50 shadow-green-100';
-        if (blocked) return 'border-red-300 bg-red-50 opacity-90'; // Blocked
-        if (task.phase === 'DOING') return 'border-blue-500 bg-blue-50 shadow-blue-100';
-        return 'border-gray-200 bg-white hover:border-gray-300';
+        e.stopPropagation();
+        e.preventDefault();
+        onConnectStart(task.id, task.x + 240, task.y + 100); // Approximate center-right of the new larger card
     };
 
     return (
         <motion.div
-            ref={nodeRef}
             drag
             dragMomentum={false}
             onDragEnd={handleDragEnd}
             initial={{ x: task.x, y: task.y }}
-            // We use initial + ref updating for position to avoid re-renders on every frame driving the store
-            // But if the store updates (e.g. alignment), we need to reflect it. 
-            // motion uses style x/y transforms.
             animate={{ x: task.x, y: task.y }}
-            transition={{ duration: 0 }} // Instant update when state changes
+            transition={{ duration: 0 }}
             onPointerDown={(e) => {
-                // Prevent canvas panning when interacting with node
                 e.preventDefault();
                 e.stopPropagation();
             }}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
             className={cn(
-                "task-node-interactive absolute w-[200px] rounded-lg border-2 shadow-sm p-3 select-none flex flex-col gap-2 group cursor-grab active:cursor-grabbing z-10",
-                getBorderColor(),
-                isConnecting ? "z-0" : "z-10"
+                "absolute w-[240px] bg-white rounded-xl shadow-md border cursor-grab active:cursor-grabbing z-10 font-sans group select-none flex flex-col transition-all duration-200",
+                isHovered ? "shadow-lg scale-[1.02]" : "shadow-sm",
+                // "Frontend Development" style selection ring - using blue ring if DOING
+                task.phase === 'DOING' ? "ring-2 ring-blue-400 border-blue-400" : "border-slate-100"
             )}
         >
-            {/* Header / grip */}
-            <div className="flex items-start justify-between gap-2">
-                {/* Checkbox / Status */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        // Add shake here if blocked?
-                        toggleTaskDone(task.id);
-                    }}
-                    className={cn(
-                        "mt-1 flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors",
-                        task.done ? "bg-green-500 border-green-500 text-white" : "border-gray-300 hover:border-gray-400",
-                        blocked && !task.done ? "cursor-not-allowed opacity-50 bg-gray-100" : ""
-                    )}
-                    title={blocked ? "Blocked by dependencies" : "Mark as done"}
-                >
-                    {task.done && <Check className="w-3.5 h-3.5" />}
-                </button>
+            {/* Top Status Badge */}
+            <div className="p-4 pb-2">
+                <div className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mb-3", statusColor)}>
+                    {statusLabel}
+                </div>
 
                 {/* Title */}
                 {isEditing ? (
                     <textarea
                         autoFocus
-                        className="flex-1 bg-transparent border-none outline-none resize-none text-sm font-medium leading-tight h-full"
+                        className="w-full bg-transparent border-b border-blue-500 outline-none resize-none text-base font-bold text-slate-900 leading-tight min-h-[3rem]"
                         value={localTitle}
                         onChange={(e) => setLocalTitle(e.target.value)}
                         onBlur={handleTitleSubmit}
@@ -131,52 +100,97 @@ export const TaskNode: React.FC<TaskNodeProps> = ({
                         }}
                     />
                 ) : (
-                    <div
-                        className="flex-1 text-sm font-medium leading-tight break-words cursor-text min-h-[1.25em]"
-                        onClick={() => setIsEditing(true)}
+                    <h3
+                        className="text-base font-bold text-slate-900 leading-tight mb-1 cursor-text"
+                        onDoubleClick={() => setIsEditing(true)}
                     >
                         {task.title}
-                        {blocked && !task.done && (
-                            <div className="flex items-center gap-1 text-red-500 text-xs mt-1.5 font-normal">
-                                <AlertCircle className="w-3 h-3" />
-                                Blocked
-                            </div>
-                        )}
-                    </div>
+                    </h3>
                 )}
+
+                {/* Type/Subtitle */}
+                <p className="text-sm text-slate-500 font-medium mb-1">{task.type || 'Task'}</p>
+
+                {/* Description */}
+                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                    {task.description || 'No description provided.'}
+                </p>
             </div>
 
-            {/* Blocked Popover */}
-            {blocked && !task.done && (
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <button className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <AlertCircle className="w-4 h-4 text-red-400" />
-                        </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-60 p-3 text-xs">
-                        <p className="font-semibold mb-2">Blocked by:</p>
-                        <ul className="space-y-1">
-                            {blockers.map(b => (
-                                <li key={b.id} className="flex items-center gap-2">
-                                    <span className={cn("w-2 h-2 rounded-full", b.done ? "bg-green-500" : "bg-gray-300")} />
-                                    <span className={b.done ? "line-through text-gray-400" : "text-gray-700"}>{b.title}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </PopoverContent>
-                </Popover>
+            {/* Divider */}
+            <div className="h-px bg-slate-50 mx-4" />
+
+            {/* Footer */}
+            <div className="p-4 pt-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    {/* Avatar */}
+                    <div className="h-6 w-6 rounded-full bg-slate-200 border border-white shadow-sm flex items-center justify-center overflow-hidden">
+                        {task.assignee?.avatar ? (
+                            <img src={task.assignee.avatar} alt="User" />
+                        ) : (
+                            <User className="h-3.5 w-3.5 text-slate-500" />
+                        )}
+                    </div>
+                </div>
+
+                {/* Due Date */}
+                <div className="flex items-center gap-1.5 text-slate-400">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium">{task.dueDate || 'No Date'}</span>
+                </div>
+            </div>
+
+            {/* Progress Bar (Only for DOING) */}
+            {task.phase === 'DOING' && (
+                <div className="mx-4 mb-4 relative h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                        className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
+                        style={{ width: `${task.progress || 50}%` }}
+                    />
+                </div>
+            )}
+            {task.phase === 'DOING' && (
+                <div className="absolute bottom-4 right-4 text-xs font-bold text-slate-600">
+                    {task.progress || 50}%
+                </div>
             )}
 
-            {/* Connection Handle (Dot) */}
-            {/* Visible on hover or always? User said "Hover task -> small dot" */}
+
+            {/* Context Menu (Hover) */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-32 p-1" align="end">
+                        <div className="flex flex-col gap-1">
+                            <Button variant="ghost" size="sm" className="h-8 justify-start gap-2 text-xs font-medium" onClick={() => setIsEditing(true)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 justify-start gap-2 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => deleteTask(task.id)}>
+                                <Trash className="h-3.5 w-3.5" />
+                                Delete
+                            </Button>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+            </div>
+
+            {/* Connection Handles (Left and Right) */}
             <div
                 className={cn(
-                    "absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-300 border-2 border-white shadow-sm cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-500 hover:scale-110",
+                    "absolute -right-3 top-[40%] w-6 h-6 rounded-full flex items-center justify-center cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity z-20",
                     isConnecting ? "opacity-0 !pointer-events-none" : ""
                 )}
                 onPointerDown={onConnectionHandlePointerDown}
-            />
+            >
+                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-white shadow-sm" />
+            </div>
+            {/* We can act as a target anywhere on the body, handled by the canvas logic mainly, or we can add a left handle visual if needed. Expected: Drop on node to connect. */}
+
         </motion.div>
     );
 };

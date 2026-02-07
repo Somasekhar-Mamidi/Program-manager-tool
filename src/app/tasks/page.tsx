@@ -1,12 +1,144 @@
-import { TaskBoardView } from "@/components/features/tasks/TaskBoardView";
-import { ClientOnly } from "@/components/common/ClientOnly";
+"use client"
+
+import { useState } from "react"
+import { PageHeader } from "@/components/layout/PageHeader"
+import { TasksListView } from "@/components/features/tasks/TasksListView"
+import { TaskDetailPanel } from "@/components/features/tasks/TaskDetailPanel"
+import { TaskBoardView } from "@/components/features/tasks/TaskBoardView"
+import { Button } from "@/components/ui/button"
+import { useCalendarStore } from "@/lib/store/calendar-store"
+import {
+    LayoutList,
+    LayoutGrid,
+    SlidersHorizontal,
+    ArrowUpDown,
+    Check
+} from "lucide-react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 export default function TasksPage() {
+    const [viewMode, setViewMode] = useState<'list' | 'board'>('board')
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+    const [statusFilter, setStatusFilter] = useState<string | null>(null)
+    const { intents } = useCalendarStore()
+
+    const filteredTasks = intents.filter(task => {
+        if (!statusFilter) return true;
+        return task.status === statusFilter;
+    });
+
+    const statuses = [
+        { value: "planned", label: "Not Started" },
+        { value: "in-progress", label: "In Progress" },
+        { value: "completed", label: "Done" },
+        { value: "blocked", label: "Blocked" },
+    ]
+
     return (
-        <ClientOnly>
-            <div className="p-6">
-                <TaskBoardView />
+        <div className="flex flex-col h-full bg-slate-50/30">
+            <PageHeader items={[{ label: 'Workspace' }, { label: 'Tasks' }]}>
+                <div className="flex items-center gap-2">
+                    <div className="flex bg-slate-100 p-1 rounded-lg border">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                "h-7 px-2.5 text-xs font-medium",
+                                viewMode === 'board' ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-900"
+                            )}
+                            onClick={() => setViewMode('board')}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                            View: Board
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                "h-7 px-2.5 text-xs font-medium",
+                                viewMode === 'list' ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-200" : "text-slate-500 hover:text-slate-900"
+                            )}
+                            onClick={() => setViewMode('list')}
+                        >
+                            <LayoutList className="h-3.5 w-3.5 mr-1.5" />
+                            View: List
+                        </Button>
+                    </div>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn("h-9 gap-2 bg-white", statusFilter ? "text-blue-600 border-blue-200 bg-blue-50" : "text-slate-600")}>
+                                <SlidersHorizontal className="h-4 w-4" />
+                                {statusFilter ? statuses.find(s => s.value === statusFilter)?.label : "Filter"}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[180px]">
+                            <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setStatusFilter(null)} className="cursor-pointer">
+                                <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", !statusFilter ? "bg-primary text-primary-foreground" : "opacity-0")} >
+                                    <Check className="h-3 w-3" />
+                                </div>
+                                All Statuses
+                            </DropdownMenuItem>
+                            {statuses.map((status) => (
+                                <DropdownMenuItem
+                                    key={status.value}
+                                    onClick={() => setStatusFilter(status.value === statusFilter ? null : status.value)}
+                                    className="cursor-pointer"
+                                >
+                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", statusFilter === status.value ? "bg-primary text-primary-foreground" : "opacity-0")} >
+                                        <Check className="h-3 w-3" />
+                                    </div>
+                                    {status.label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button variant="outline" size="sm" className="h-9 gap-2 text-slate-600 bg-white">
+                        <ArrowUpDown className="h-4 w-4" />
+                        Sort
+                    </Button>
+                </div>
+            </PageHeader>
+
+            <div className="flex-1 flex overflow-hidden relative">
+                {/* Main Content */}
+                <div className={`flex-1 overflow-y-auto p-6 transition-all duration-300 ${selectedTaskId ? 'mr-0' : ''}`}>
+                    <div className="max-w-[1600px] mx-auto h-full">
+                        {viewMode === 'list' ? (
+                            <TasksListView
+                                onSelectTask={setSelectedTaskId}
+                                selectedTaskId={selectedTaskId}
+                                tasks={filteredTasks}
+                            />
+                        ) : (
+                            <div className="h-full">
+                                <TaskBoardView intents={filteredTasks} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Panel */}
+                {selectedTaskId && (
+                    <div className="h-full border-l bg-white shadow-xl z-20 animate-in slide-in-from-right duration-300">
+                        <TaskDetailPanel
+                            taskId={selectedTaskId}
+                            onClose={() => setSelectedTaskId(null)}
+                        />
+                    </div>
+                )}
             </div>
-        </ClientOnly>
-    );
+        </div>
+    )
 }

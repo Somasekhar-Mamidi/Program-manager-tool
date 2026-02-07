@@ -20,9 +20,15 @@ export function DailyRolloverCheck() {
     const [isOpen, setIsOpen] = useState(false)
 
     useEffect(() => {
-        // Runs on mount
+        // Runs on mount and when intents change
         const today = new Date()
         const todayStr = format(today, 'yyyy-MM-dd')
+
+        // Check if we already asked today
+        const lastAsked = localStorage.getItem('msc_daily_rollover_last_shown')
+        if (lastAsked === todayStr) {
+            return
+        }
 
         const overdue = intents.filter(intent => {
             // Is not completed AND date is strictly before today
@@ -33,6 +39,8 @@ export function DailyRolloverCheck() {
         if (overdue.length > 0) {
             setOverdueCount(overdue.length)
             setIsOpen(true)
+            // Mark as asked for today
+            localStorage.setItem('msc_daily_rollover_last_shown', todayStr)
         }
     }, [intents])
 

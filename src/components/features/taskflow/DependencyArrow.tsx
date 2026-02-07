@@ -4,19 +4,23 @@ interface DependencyArrowProps {
     start: { x: number; y: number };
     end: { x: number; y: number };
     status: 'pending' | 'satisfied';
+    color?: string;
 }
 
-export const DependencyArrow: React.FC<DependencyArrowProps> = ({ start, end, status }) => {
-    // Simple curved path
-    // Start is usually right edge of source
-    // End is usually left edge of target
+export const DependencyArrow: React.FC<DependencyArrowProps> = ({ start, end, status, color }) => {
+    // Smoother Bezier Curve logic
+    // We want the line to exit right and enter left
 
-    const c1x = start.x + (end.x - start.x) / 2;
-    const c1y = start.y;
-    const c2x = end.x - (end.x - start.x) / 2;
-    const c2y = end.y;
+    const dist = Math.abs(end.x - start.x);
+    const controlPointOffset = Math.max(dist * 0.5, 50); // Minimum offset
 
-    const path = `M ${start.x} ${start.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${end.x} ${end.y}`;
+    const cp1x = start.x + controlPointOffset;
+    const cp1y = start.y;
+    const cp2x = end.x - controlPointOffset;
+    const cp2y = end.y;
+
+    const path = `M ${start.x} ${start.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${end.x} ${end.y}`;
+    const strokeColor = color || (status === 'satisfied' ? '#22c55e' : '#94a3b8');
 
     return (
         <svg
@@ -25,25 +29,26 @@ export const DependencyArrow: React.FC<DependencyArrowProps> = ({ start, end, st
         >
             <defs>
                 <marker
-                    id={`arrowhead-${status}`}
-                    markerWidth="10"
-                    markerHeight="7"
-                    refX="9"
-                    refY="3.5"
+                    id={`arrowhead-${status}-${color || 'default'}`}
+                    markerWidth="8"
+                    markerHeight="6"
+                    refX="7"
+                    refY="3"
                     orient="auto"
                 >
-                    <polygon
-                        points="0 0, 10 3.5, 0 7"
-                        fill={status === 'satisfied' ? '#22c55e' : '#9ca3af'}
+                    <path
+                        d="M0,0 L0,6 L8,3 z"
+                        fill={strokeColor}
                     />
                 </marker>
             </defs>
             <path
                 d={path}
                 fill="none"
-                stroke={status === 'satisfied' ? '#22c55e' : '#9ca3af'}
+                stroke={strokeColor}
                 strokeWidth="2"
-                markerEnd={`url(#arrowhead-${status})`}
+                markerEnd={`url(#arrowhead-${status}-${color || 'default'})`}
+                style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.05))' }}
             />
         </svg>
     );

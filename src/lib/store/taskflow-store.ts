@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/lib/supabase';
 
 export type TaskPhase = 'TODO' | 'DOING' | 'DONE';
 
 export interface Task {
     id: string;
     title: string;
+    description?: string;
+    type?: string; // e.g. "Milestone", "Phase 1"
+    assignee?: { name: string; avatar?: string };
+    dueDate?: string;
+    progress?: number; // 0-100
     phase: TaskPhase;
     x: number;
     y: number;
@@ -23,8 +29,9 @@ interface TaskFlowState {
     dependencies: Dependency[];
 
     // Actions
-    addTask: (title: string, phase?: TaskPhase, x?: number, y?: number) => void;
+    addTask: (title: string, phase?: TaskPhase, x?: number, y?: number, data?: Partial<Task>) => void;
     updateTaskPosition: (id: string, x: number, y: number) => void;
+    updateTask: (id: string, updates: Partial<Task>) => void; // Generic update
     updateTaskPhase: (id: string, phase: TaskPhase) => void;
     updateTaskTitle: (id: string, title: string) => void;
     toggleTaskDone: (id: string) => void;
@@ -47,7 +54,7 @@ export const useTaskFlowStore = create<TaskFlowState>()(
             tasks: [],
             dependencies: [],
 
-            addTask: (title, phase = 'TODO', x = 100, y = 100) => {
+            addTask: (title, phase = 'TODO', x = 100, y = 100, data = {}) => {
                 set((state) => ({
                     tasks: [
                         ...state.tasks,
@@ -57,21 +64,30 @@ export const useTaskFlowStore = create<TaskFlowState>()(
                             phase,
                             x,
                             y,
-                            done: false,
+                            done: phase === 'DONE',
+                            progress: phase === 'DONE' ? 100 : 0,
+                            description: 'No description added.',
+                            type: 'Task',
+                            assignee: { name: 'User' }, // Default assignee
+                            ...data
                         },
                     ],
                 }));
             },
 
             updateTaskPosition: (id, x, y) => {
-                let newPhase: TaskPhase = 'TODO';
-                if (x >= 800) newPhase = 'DONE';
-                else if (x >= 400) newPhase = 'DOING';
-                else newPhase = 'TODO';
-
+                // Removed auto-phase switching based on X position to allow free-form layout
                 set((state) => ({
                     tasks: state.tasks.map((task) =>
-                        task.id === id ? { ...task, x, y, phase: newPhase } : task
+                        task.id === id ? { ...task, x, y } : task
+                    ),
+                }));
+            },
+
+            updateTask: (id, updates) => {
+                set((state) => ({
+                    tasks: state.tasks.map((task) =>
+                        task.id === id ? { ...task, ...updates } : task
                     ),
                 }));
             },
@@ -196,6 +212,33 @@ export const useTaskFlowStore = create<TaskFlowState>()(
         }),
         {
             name: 'taskflow-storage',
+            storage: {
+                getItem: async (name) => {
+                    try {
+                        const { data, error } = await supabase
+                            .from('app_storage')
+                            .select('value')
+                            .eq('key', name)
+                            .single();
+
+                        if (error && error.code !== 'PGRST116') return null;
+                        if (data?.value) return data.value;
+                        return null;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+                setItem: async (name, value) => {
+                    try {
+                        await supabase
+                            .from('app_storage')
+                            .upsert({ key: name, value: value }, { onConflict: 'key' });
+                    } catch (e) {
+                        console.error("TaskFlow setItem failed", e);
+                    }
+                },
+                removeItem: async () => { },
+            },
         }
     )
 );

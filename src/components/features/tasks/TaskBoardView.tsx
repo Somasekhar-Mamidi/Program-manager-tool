@@ -43,8 +43,9 @@ import { CharterSection } from "./CharterSection"
 import { AddIntentDialog } from "../calendar/AddIntentDialog"
 import { Plus, Trash2 } from "lucide-react"
 
-export function TaskBoardView() {
-    const { intents, charters, updateIntent, deleteIntent, toggleMicroStep, addMicroStep } = useCalendarStore()
+export function TaskBoardView({ intents: propIntents }: { intents?: IntentBlock[] } = {}) {
+    const { intents: storeIntents, charters, updateIntent, deleteIntent, toggleMicroStep, addMicroStep } = useCalendarStore()
+    const intents = propIntents || storeIntents
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
     const [editingBlocker, setEditingBlocker] = useState<string | null>(null)
     const [blockerText, setBlockerText] = useState("")

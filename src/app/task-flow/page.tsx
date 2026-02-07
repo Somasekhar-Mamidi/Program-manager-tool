@@ -5,7 +5,7 @@ import { ClientOnly } from "@/components/common/ClientOnly"
 
 export default function TaskFlowPage() {
     return (
-        <div className="h-[calc(100vh-8rem)] w-full bg-background border rounded-xl overflow-hidden shadow-sm">
+        <div className="h-full w-full bg-slate-50/50 flex flex-col">
             <ClientOnly>
                 <TaskFlowCanvas />
             </ClientOnly>
