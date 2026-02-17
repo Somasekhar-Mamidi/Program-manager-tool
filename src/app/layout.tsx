@@ -8,6 +8,7 @@ import { DailyRolloverCheck } from "@/components/features/efficiency/DailyRollov
 import { Toaster } from "sonner";
 import { StoreHydration } from "@/components/features/store/StoreHydration";
 import { DataRecovery } from "@/components/debug/DataRecovery";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export default function RootLayout({
   children,
@@ -18,15 +19,17 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <SidebarProvider>
-          <AppSidebar />
-          <MeetingPrepMonitor />
-          <DailyRolloverCheck />
-          <StoreHydration />
-          <DataRecovery />
-          <main className="w-full h-screen overflow-hidden flex flex-col bg-slate-50/50">
-            {children}
-          </main>
-          <Toaster />
+          <ErrorBoundary>
+            <AppSidebar />
+            <MeetingPrepMonitor />
+            <DailyRolloverCheck />
+            <StoreHydration />
+            <DataRecovery />
+            <main className="w-full h-screen overflow-hidden flex flex-col bg-slate-50/50">
+              {children}
+            </main>
+            <Toaster />
+          </ErrorBoundary>
         </SidebarProvider>
       </body>
     </html>

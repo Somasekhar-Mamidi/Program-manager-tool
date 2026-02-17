@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { IntentBlock, DaySummary, MicroStep, Goal, Charter } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/lib/supabase';
+import { CalendarStateSchema } from '@/lib/schemas';
 
 interface CalendarState {
     intents: IntentBlock[];
@@ -226,7 +227,7 @@ export const useCalendarStore = create<CalendarState>()(
                     priority: 'Medium',
                     dueDate: 'Nov 10, 2024',
                     project: 'Project Gamma',
-                    assignee: { name: 'Alex Chen', avatar: 'https://i.pravatar.cc/150?u=alex' },
+                    assignee: { name: 'Somasekhar', avatar: 'https://i.pravatar.cc/150?u=somasekhar' },
                     date: '2024-11-10',
                     createdAt: Date.now(),
                     type: 'work',
@@ -240,7 +241,7 @@ export const useCalendarStore = create<CalendarState>()(
                         { id: 'ms5', title: 'Review Feedback with Development Team', isCompleted: false, type: 'finish' }
                     ],
                     activityLog: [
-                        { id: 'a1', actorName: 'Alex Chen', action: 'moved to In Progress', timestamp: Date.now() - 3600000, actorAvatar: 'https://i.pravatar.cc/150?u=alex' },
+                        { id: 'a1', actorName: 'Somasekhar', action: 'moved to In Progress', timestamp: Date.now() - 3600000, actorAvatar: 'https://i.pravatar.cc/150?u=somasekhar' },
                         { id: 'a2', actorName: 'Emily Davis', action: 'added a comment', details: '"Test environment is ready."', timestamp: Date.now() - 7200000, actorAvatar: 'https://i.pravatar.cc/150?u=emily' },
                         { id: 'a3', actorName: 'Sarah Lee', action: 'created task', timestamp: Date.now() - 86400000, actorAvatar: 'https://i.pravatar.cc/150?u=sarah' }
                     ]
@@ -282,7 +283,7 @@ export const useCalendarStore = create<CalendarState>()(
                     priority: 'Low',
                     dueDate: 'Nov 20, 2024',
                     project: 'Internal Reporting',
-                    assignee: { name: 'Alex Chen', avatar: 'https://i.pravatar.cc/150?u=alex' },
+                    assignee: { name: 'Somasekhar', avatar: 'https://i.pravatar.cc/150?u=somasekhar' },
                     date: '2024-11-20',
                     createdAt: Date.now(),
                     microSteps: [],
@@ -452,33 +453,75 @@ export const useCalendarStore = create<CalendarState>()(
             name: 'msc-storage',
             storage: {
                 getItem: async (name) => {
+                    // 1. ALWAYS check Local Storage first
+                    if (typeof window !== 'undefined') {
+                        const local = localStorage.getItem(name);
+                        if (local) {
+                            try {
+                                const parsed = JSON.parse(local);
+                                if (parsed && parsed.state) {
+                                    // Validation Guard
+                                    const result = CalendarStateSchema.safeParse(parsed.state);
+                                    if (result.success) {
+                                        // We only validate the known shapes, but we return the full persisted object
+                                        // to keep zustand meta data if any
+                                        return parsed;
+                                    } else {
+                                        console.warn("Local storage validation failed, recovering partials:", result.error);
+                                        // Attempt to return what we can or fall back
+                                        return parsed; // For now, log but allow, to prevent total data loss during migration
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("Local storage parse failed", e);
+                            }
+                        }
+                    }
+
+                    // 2. If Local is empty, try Cloud
                     try {
-                        const { data, error } = await supabase
+                        const { data } = await supabase
                             .from('app_storage')
                             .select('value')
                             .eq('key', name)
                             .single();
 
-                        if (error && error.code !== 'PGRST116') return null;
-                        if (data?.value) return data.value;
-                        return null;
+                        if (data?.value) {
+                            // data.value is likely already an object if column is jsonb/json
+                            // If it's a string, we might need to parse it. 
+                            // Assuming Supabase returns the JSON object.
+                            const value = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+
+                            // Save to local for next time
+                            if (typeof window !== 'undefined') {
+                                localStorage.setItem(name, JSON.stringify(value));
+                            }
+                            return value; // Return OBJECT
+                        }
                     } catch (e) {
-                        return null;
+                        console.error("Cloud fetch failed", e);
                     }
+
+                    return null;
                 },
                 setItem: async (name, value) => {
+                    // value is StorageValue<S> (Object)
+                    // 1. Save to LocalStorage (Stringify first!)
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem(name, JSON.stringify(value));
+                    }
+
+                    // 2. Sync to Supabase (Send Object)
                     try {
                         await supabase
                             .from('app_storage')
                             .upsert({ key: name, value: value }, { onConflict: 'key' });
                     } catch (e) {
-                        console.error("Storage setItem failed", e);
+                        console.error("Cloud sync failed", e);
                     }
                 },
-
                 removeItem: async (name) => {
-                    // Verify if we want delete functionality, for now just no-op or maybe clear value
-                    console.warn("Remove item not fully implemented in API storage");
+                    // no-op
                 },
             },
         }

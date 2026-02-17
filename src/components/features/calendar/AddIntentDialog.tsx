@@ -64,6 +64,7 @@ const formSchema = z.object({
     estimatedEffort: z.enum(["low", "medium", "high"]),
     type: z.enum(["work", "social"]),
     isMeeting: z.boolean(),
+    isTaskResource: z.boolean().optional(),
     scheduledTime: z.string().optional(),
     date: z.date(),
 }).refine(data => !data.isMeeting || !!data.scheduledTime, {
@@ -77,9 +78,11 @@ interface AddIntentDialogProps {
     open?: boolean
     onOpenChange?: (open: boolean) => void
     intent?: IntentBlock
+    onSuccess?: () => void
+    isTaskResource?: boolean // New prop
 }
 
-export function AddIntentDialog({ date, children, open, onOpenChange, intent }: AddIntentDialogProps) {
+export function AddIntentDialog({ date, children, open, onOpenChange, intent, onSuccess, isTaskResource }: AddIntentDialogProps) {
     const [internalOpen, setInternalOpen] = useState(false)
 
     // Handle both controlled and uncontrolled modes
@@ -98,6 +101,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent }: 
             estimatedEffort: (intent?.estimatedEffort as "low" | "medium" | "high") || "medium",
             type: (intent?.type as "work" | "social") || "work",
             isMeeting: intent?.isMeeting || false,
+            isTaskResource: intent?.isTaskResource || isTaskResource || false, // Default from prop
             scheduledTime: intent?.scheduledTime || "",
             date: intent ? new Date(intent.date) : date,
         },
@@ -112,11 +116,12 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent }: 
                 estimatedEffort: (intent?.estimatedEffort as "low" | "medium" | "high") || "medium",
                 type: (intent?.type as "work" | "social") || "work",
                 isMeeting: intent?.isMeeting || false,
+                isTaskResource: intent?.isTaskResource || isTaskResource || false,
                 scheduledTime: intent?.scheduledTime || "",
                 date: intent ? new Date(intent.date) : date,
             })
         }
-    }, [intent, date, isOpen, form])
+    }, [intent, date, isOpen, form, isTaskResource])
 
     function onSubmit(values: z.infer<typeof formSchema>) {
         const intentData = {
@@ -126,6 +131,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent }: 
             estimatedEffort: values.estimatedEffort,
             type: values.type,
             isMeeting: values.isMeeting,
+            isTaskResource: values.isTaskResource, // Pass to store
             scheduledTime: values.scheduledTime,
         }
 
@@ -148,6 +154,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent }: 
         }
 
         setIsOpen?.(false)
+        if (onSuccess) onSuccess()
     }
 
     return (

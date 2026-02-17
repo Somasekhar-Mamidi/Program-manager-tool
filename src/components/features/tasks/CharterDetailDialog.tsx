@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Charter, MeetingResource, ResourceType } from "@/types"
+import { storage } from "@/lib/storage"
 import { useCalendarStore } from "@/lib/store/calendar-store"
 import {
     Dialog,
@@ -35,6 +36,7 @@ import {
 } from "lucide-react"
 import { useTaskFlowStore, TaskPhase } from "@/lib/store/taskflow-store"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface CharterDetailDialogProps {
     charter: Charter
@@ -235,30 +237,28 @@ export function CharterDetailDialog({ charter, isOpen, onClose }: CharterDetailD
                                                 <Input
                                                     type="file"
                                                     className="cursor-pointer"
-                                                    onChange={(e) => {
+                                                    onChange={async (e) => {
                                                         const file = e.target.files?.[0]
                                                         if (file) {
-                                                            // Limit file size to ~2MB for localStorage safety
-                                                            if (file.size > 2 * 1024 * 1024) {
-                                                                alert("File is too large for local demo storage (Max 2MB).")
-                                                                return;
-                                                            }
-
                                                             setResTitle(file.name)
-
-                                                            // Convert to Base64 for persistence
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                const base64 = reader.result as string;
-                                                                setResUrl(base64);
-                                                            };
-                                                            reader.readAsDataURL(file);
+                                                            try {
+                                                                // Upload to Supabase Storage
+                                                                const publicUrl = await storage.uploadFile(file, 'charter-assets');
+                                                                if (publicUrl) {
+                                                                    setResUrl(publicUrl);
+                                                                } else {
+                                                                    alert("Upload failed. Please check your network or storage configuration.");
+                                                                }
+                                                            } catch (error) {
+                                                                console.error("Upload error", error);
+                                                                alert("Upload failed.");
+                                                            }
                                                         }
                                                     }}
                                                 />
                                             </div>
                                             <p className="text-[10px] text-muted-foreground">
-                                                *Local file reference only. File name will be saved.
+                                                *Uploaded to Supabase Storage (msc-assets bucket)
                                             </p>
                                         </div>
                                     )}
@@ -425,11 +425,15 @@ export function CharterDetailDialog({ charter, isOpen, onClose }: CharterDetailD
                             </div>
                             <div className="flex-1 bg-muted/20 overflow-auto flex items-center justify-center p-4">
                                 {previewResource.type === 'image' ? (
-                                    <img
-                                        src={previewResource.url}
-                                        alt={previewResource.title}
-                                        className="max-w-full max-h-full object-contain shadow-lg rounded"
-                                    />
+                                    <div className="relative w-full h-full min-h-[50vh]">
+                                        <Image
+                                            src={previewResource.url || ""}
+                                            alt={previewResource.title}
+                                            fill
+                                            className="object-contain shadow-lg rounded"
+                                            unoptimized // For external/Supabase URLs if domain not configured
+                                        />
+                                    </div>
                                 ) : (
                                     <iframe
                                         src={previewResource.url}

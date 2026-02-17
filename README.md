@@ -38,3 +38,4 @@ Visit [http://localhost:3000](http://localhost:3000) to view the application.
 - **Task Breakdown**: Detailed tracking with micro-steps.
 - **Goal Consistency**: Track daily habits and streaks.
 - **Daily Rituals**: Structured day start and end reflections.
+- **Task <-> Resources**: Dedicated module for managing task-related resources, questions, and notes.

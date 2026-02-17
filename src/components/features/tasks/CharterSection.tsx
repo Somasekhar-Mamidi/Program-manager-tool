@@ -12,18 +12,30 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export function CharterSection() {
     const { charters, addCharter, deleteCharter } = useCalendarStore()
     const [selectedCharter, setSelectedCharter] = useState<Charter | null>(null)
+    const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [newCharterTitle, setNewCharterTitle] = useState("")
 
     const handleCreateCharter = () => {
-        const title = prompt("Enter Charter Name:")
-        if (title?.trim()) {
+        if (newCharterTitle.trim()) {
             addCharter({
-                title: title.trim(),
+                title: newCharterTitle.trim(),
                 description: "",
             })
+            setNewCharterTitle("")
+            setIsCreateOpen(false)
         }
     }
 
@@ -39,7 +51,7 @@ export function CharterSection() {
                         <p className="text-sm text-muted-foreground">High-level initiatives and active workstreams.</p>
                     </div>
                 </div>
-                <Button onClick={handleCreateCharter} variant="outline" size="sm" className="gap-2">
+                <Button onClick={() => setIsCreateOpen(true)} variant="outline" size="sm" className="gap-2">
                     <Plus className="h-4 w-4" />
                     New Charter
                 </Button>
@@ -50,7 +62,7 @@ export function CharterSection() {
                 {(!charters || charters.length === 0) && (
                     <div className="flex flex-col items-center justify-center min-w-[200px] h-[120px] border-2 border-dashed rounded-xl bg-muted/20 text-muted-foreground text-sm">
                         <p>No active charters.</p>
-                        <Button variant="link" onClick={handleCreateCharter} className="h-auto p-0">Create one</Button>
+                        <Button variant="link" onClick={() => setIsCreateOpen(true)} className="h-auto p-0">Create one</Button>
                     </div>
                 )}
 
@@ -112,6 +124,31 @@ export function CharterSection() {
                     onClose={() => setSelectedCharter(null)}
                 />
             )}
+
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Create New Charter</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Charter Name</Label>
+                            <Input
+                                placeholder="e.g. Q4 Marketing Initiatives"
+                                value={newCharterTitle}
+                                onChange={(e) => setNewCharterTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCreateCharter();
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                        <Button onClick={handleCreateCharter} disabled={!newCharterTitle.trim()}>Create Charter</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

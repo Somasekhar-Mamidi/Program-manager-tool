@@ -46,6 +46,12 @@ import { Plus, Trash2 } from "lucide-react"
 export function TaskBoardView({ intents: propIntents }: { intents?: IntentBlock[] } = {}) {
     const { intents: storeIntents, charters, updateIntent, deleteIntent, toggleMicroStep, addMicroStep } = useCalendarStore()
     const intents = propIntents || storeIntents
+    const [isMounted, setIsMounted] = useState(false)
+
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
     const [editingBlocker, setEditingBlocker] = useState<string | null>(null)
     const [blockerText, setBlockerText] = useState("")
@@ -358,6 +364,10 @@ export function TaskBoardView({ intents: propIntents }: { intents?: IntentBlock[
             </Table>
         </div >
     )
+
+    if (!isMounted) {
+        return <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>
+    }
 
     return (
         <div className="space-y-6">

@@ -14,6 +14,7 @@ import {
     Flag,
     CheckCircle2,
     Circle,
+    Trash2,
 
 } from "lucide-react"
 
@@ -23,7 +24,7 @@ interface TaskDetailPanelProps {
 }
 
 export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
-    const { intents, toggleMicroStep } = useCalendarStore()
+    const { intents, toggleMicroStep, deleteIntent } = useCalendarStore()
     const task = intents.find(t => t.id === taskId)
 
     if (!task) return null
@@ -39,9 +40,24 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                     <h2 className="text-xl font-bold text-slate-900 leading-tight">
                         {task.objective}
                     </h2>
-                    <Button variant="ghost" size="icon" className="-mt-1 -mr-2 text-slate-400 hover:text-slate-600" onClick={onClose}>
-                        <X className="h-5 w-5" />
-                    </Button>
+                    <div className="flex items-center gap-1 -mt-1 -mr-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                                if (confirm("Are you sure you want to delete this task?")) {
+                                    deleteIntent(task.id);
+                                    onClose();
+                                }
+                            }}
+                        >
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600" onClick={onClose}>
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2">

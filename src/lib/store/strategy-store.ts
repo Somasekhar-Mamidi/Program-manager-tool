@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { supabase } from '../supabase'
 
 export interface StrategyStep {
     id: string;
@@ -49,7 +50,61 @@ export const useStrategyStore = create<StrategyBoardState>()(
         }),
         {
             name: 'strategy-storage',
-            storage: createJSONStorage(() => localStorage),
+            storage: {
+                getItem: async (name) => {
+                    // 1. ALWAYS check Local Storage first
+                    if (typeof window !== 'undefined') {
+                        const local = localStorage.getItem(name);
+                        if (local) {
+                            try {
+                                const parsed = JSON.parse(local);
+                                if (parsed && parsed.state) {
+                                    return parsed; // Return OBJECT
+                                }
+                            } catch (e) {
+                                console.warn("Local storage parse failed", e);
+                            }
+                        }
+                    }
+
+                    // 2. If Local is empty, try Cloud
+                    try {
+                        const { data } = await supabase
+                            .from('app_storage')
+                            .select('value')
+                            .eq('key', name)
+                            .single();
+
+                        if (data?.value) {
+                            const value = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+
+                            if (typeof window !== 'undefined') {
+                                localStorage.setItem(name, JSON.stringify(value));
+                            }
+                            return value;
+                        }
+                    } catch (e) {
+                        console.error("Cloud fetch failed", e);
+                    }
+                    return null;
+                },
+                setItem: async (name, value) => {
+                    // 1. Always save to LocalStorage first
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem(name, JSON.stringify(value));
+                    }
+
+                    // 2. Sync to Supabase
+                    try {
+                        await supabase
+                            .from('app_storage')
+                            .upsert({ key: name, value: value }, { onConflict: 'key' });
+                    } catch (e) {
+                        console.error("Cloud sync failed", e);
+                    }
+                },
+                removeItem: async () => { },
+            },
         }
     )
 )

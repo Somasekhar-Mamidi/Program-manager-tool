@@ -12,7 +12,8 @@ import {
   BookMarked,
   BarChart,
   User,
-  History
+  History,
+  Layers
 } from "lucide-react"
 
 import {
@@ -37,6 +38,7 @@ const modules = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "TaskFlow", url: "/task-flow", icon: Workflow },
   { title: "Meeting Prep", url: "/meeting-prep", icon: Calendar },
+  { title: "Task < > Resources", url: "/task-resources", icon: Layers },
 ]
 
 // Quick Access: Personal or secondary items
@@ -51,28 +53,28 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar className="border-r-0" collapsible="icon">
-      <SidebarHeader className="bg-[#0f172a] text-sidebar-primary-foreground pt-4 pb-2">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar" collapsible="icon">
+      <SidebarHeader className="bg-sidebar text-sidebar-foreground pt-4 pb-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-2 px-2 transition-all group-data-[collapsible=icon]:justify-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/30">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/30">
                 <BrainCircuit className="h-5 w-5" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                <span className="font-bold text-base tracking-tight text-white">MSC</span>
-                <span className="text-[10px] text-slate-400 font-medium tracking-wider">PROGRAM MANAGER</span>
+                <span className="font-bold text-base tracking-tight text-sidebar-foreground">MSC</span>
+                <span className="text-[10px] text-muted-foreground font-medium tracking-wider">PROGRAM MANAGER</span>
               </div>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="bg-[#0f172a] text-slate-300">
+      <SidebarContent className="bg-sidebar text-sidebar-foreground">
 
         {/* Modules Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-slate-500 text-xs font-bold tracking-wider uppercase mt-4 mb-2 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="text-muted-foreground text-xs font-bold tracking-wider uppercase mt-4 mb-2 group-data-[collapsible=icon]:hidden">
             Modules
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -87,13 +89,13 @@ export function AppSidebar() {
                       className={`
                         h-10 transition-all duration-200 ease-in-out
                         ${isActive
-                          ? "bg-indigo-600/90 text-white shadow-md shadow-indigo-900/20 hover:bg-indigo-600 hover:text-white"
-                          : "hover:bg-slate-800 hover:text-white"
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md shadow-sidebar-primary/20 hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-muted-foreground"
                         }
                       `}
                     >
                       <a href={item.url} className="font-medium">
-                        <item.icon className={isActive ? "text-indigo-200" : "text-slate-400"} />
+                        <item.icon className={isActive ? "text-sidebar-primary-foreground" : "text-muted-foreground"} />
                         <span>{item.title}</span>
                       </a>
                     </SidebarMenuButton>
@@ -106,7 +108,7 @@ export function AppSidebar() {
 
         {/* Quick Access Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-slate-500 text-xs font-bold tracking-wider uppercase mt-6 mb-2 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="text-muted-foreground text-xs font-bold tracking-wider uppercase mt-6 mb-2 group-data-[collapsible=icon]:hidden">
             Quick Access
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -121,8 +123,8 @@ export function AppSidebar() {
                       className={`
                         h-9 mb-0.5 text-sm transition-colors
                         ${isActive
-                          ? "bg-slate-800 text-indigo-300 border-l-2 border-indigo-500 rounded-l-none"
-                          : "hover:bg-slate-800/50 hover:text-slate-100 text-slate-400"
+                          ? "bg-sidebar-accent text-sidebar-primary border-l-2 border-sidebar-primary rounded-l-none"
+                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-muted-foreground"
                         }
                       `}
                     >
@@ -139,23 +141,23 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="bg-[#0f172a] border-t border-slate-800 p-2">
+      <SidebarFooter className="bg-sidebar border-t border-sidebar-border p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="hover:bg-slate-800 text-slate-300 hover:text-white">
-              <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center">
+            <SidebarMenuButton size="lg" className="hover:bg-sidebar-accent text-sidebar-foreground hover:text-sidebar-accent-foreground">
+              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
                 <User className="h-4 w-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Alex Chen</span>
-                <span className="truncate text-xs text-slate-500">Workspace Owner</span>
+                <span className="truncate font-semibold">Somasekhar</span>
+                <span className="truncate text-xs text-muted-foreground">Workspace Owner</span>
               </div>
               <Settings className="ml-auto h-4 w-4" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail className="hover:bg-indigo-500/10" />
+      <SidebarRail className="hover:bg-sidebar-primary/10" />
     </Sidebar>
   )
 }

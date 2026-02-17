@@ -16,7 +16,7 @@ export interface MeetingQuestion {
     text: string;
     isMustAsk: boolean;
     isAnswered: boolean;
-
+    tags?: string[];
     attachments?: MeetingResource[];
 }
 
@@ -25,6 +25,7 @@ export interface MeetingNoteItem {
     text: string;
     isImportant: boolean;
     isCompleted: boolean;
+    tags?: string[];
     attachments?: MeetingResource[];
 }
 
@@ -58,9 +59,21 @@ export interface IntentBlock {
     status: IntentStatus;
     microSteps: MicroStep[];
     createdAt: number;
+    assignee?: {
+        name: string;
+        avatar: string; // URL
+    };
+    priority?: 'Low' | 'Medium' | 'High';
+    dueDate?: string; // ISO or formatted date
+    project?: string;
+    calendarCategory?: string;
+
     // Meeting Prep Fields
+    startTime?: string; // HH:mm
+    endTime?: string; // HH:mm
     scheduledTime?: string; // HH:mm format (24h)
     isMeeting?: boolean;
+    isTaskResource?: boolean;
     order?: number; // Sorting order
     prepNotes?: string; // Markdown content for meeting prep
     blockers?: string; // Notes on what is blocking progress
@@ -78,6 +91,16 @@ export interface IntentBlock {
     decisions?: DecisionRecord[];
     retro?: RetroBlock;
     charterId?: string; // Link to a specific Charter
+    activityLog?: ActivityLog[];
+}
+
+export interface ActivityLog {
+    id: string;
+    actorName: string;
+    actorAvatar: string;
+    action: string;
+    details?: string;
+    timestamp: number;
 }
 
 export interface ContextBlock {

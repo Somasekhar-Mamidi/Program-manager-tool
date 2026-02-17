@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
     request: Request,
-    { params }: { params: { key: string } }
+    { params }: { params: Promise<{ key: string }> }
 ) {
-    if (params.key === 'health') return NextResponse.json({ status: 'ok' });
+    const { key } = await params;
 
-    const key = params.key;
+    if (key === 'health') return NextResponse.json({ status: 'ok' });
 
     try {
         /*
@@ -30,9 +30,9 @@ export async function GET(
 
 export async function POST(
     request: Request,
-    { params }: { params: { key: string } }
+    { params }: { params: Promise<{ key: string }> }
 ) {
-    const key = params.key;
+    const { key } = await params;
 
     try {
         const body = await request.json();

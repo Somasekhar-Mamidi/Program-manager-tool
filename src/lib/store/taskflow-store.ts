@@ -214,27 +214,56 @@ export const useTaskFlowStore = create<TaskFlowState>()(
             name: 'taskflow-storage',
             storage: {
                 getItem: async (name) => {
+                    // 1. ALWAYS check Local Storage first
+                    if (typeof window !== 'undefined') {
+                        const local = localStorage.getItem(name);
+                        if (local) {
+                            try {
+                                const parsed = JSON.parse(local);
+                                if (parsed && parsed.state) {
+                                    return parsed; // Return OBJECT
+                                }
+                            } catch (e) {
+                                console.warn("Local storage parse failed", e);
+                            }
+                        }
+                    }
+
+                    // 2. If Local is empty, try Cloud
                     try {
-                        const { data, error } = await supabase
+                        const { data } = await supabase
                             .from('app_storage')
                             .select('value')
                             .eq('key', name)
                             .single();
 
-                        if (error && error.code !== 'PGRST116') return null;
-                        if (data?.value) return data.value;
-                        return null;
+                        if (data?.value) {
+                            // Cloud likely returns valid JSON object if configured correctly
+                            const value = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+
+                            if (typeof window !== 'undefined') {
+                                localStorage.setItem(name, JSON.stringify(value));
+                            }
+                            return value; // Return OBJECT
+                        }
                     } catch (e) {
-                        return null;
+                        console.error("Cloud fetch failed", e);
                     }
+                    return null;
                 },
                 setItem: async (name, value) => {
+                    // 1. Always save to LocalStorage first (Stringify Object)
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem(name, JSON.stringify(value));
+                    }
+
+                    // 2. Sync to Supabase (Send Object)
                     try {
                         await supabase
                             .from('app_storage')
                             .upsert({ key: name, value: value }, { onConflict: 'key' });
                     } catch (e) {
-                        console.error("TaskFlow setItem failed", e);
+                        console.error("Cloud sync failed", e);
                     }
                 },
                 removeItem: async () => { },
