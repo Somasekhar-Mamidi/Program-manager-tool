@@ -24,11 +24,13 @@ export interface Dependency {
     to: string;
 }
 
-interface TaskFlowState {
+export interface TaskFlowState {
     tasks: Task[];
     dependencies: Dependency[];
+    cloudSyncStatus: 'idle' | 'syncing' | 'error' | 'success' | 'unsaved';
 
     // Actions
+    syncToCloud: () => Promise<void>;
     addTask: (title: string, phase?: TaskPhase, x?: number, y?: number, data?: Partial<Task>) => void;
     updateTaskPosition: (id: string, x: number, y: number) => void;
     updateTask: (id: string, updates: Partial<Task>) => void; // Generic update
@@ -40,6 +42,7 @@ interface TaskFlowState {
     addDependency: (from: string, to: string) => void;
     removeDependency: (from: string, to: string) => void;
     clearTasks: () => void;
+    setCloudSyncStatus: (status: 'idle' | 'syncing' | 'error' | 'success' | 'unsaved') => void;
 
     // Selectors/Helpers
     getTask: (id: string) => Task | undefined;
@@ -48,11 +51,50 @@ interface TaskFlowState {
     getBlockers: (taskId: string) => Task[];
 }
 
+// Store functionality starts here
+
+
 export const useTaskFlowStore = create<TaskFlowState>()(
     persist(
         (set, get) => ({
             tasks: [],
             dependencies: [],
+            cloudSyncStatus: 'idle',
+
+            setCloudSyncStatus: (status) => set({ cloudSyncStatus: status }),
+
+            syncToCloud: async () => {
+                const state = get();
+                if (state.cloudSyncStatus === 'syncing') return;
+
+                set({ cloudSyncStatus: 'syncing' });
+                try {
+                    // Replicate Zustand persist wrapper structure
+                    const payload = {
+                        state: {
+                            tasks: state.tasks,
+                            dependencies: state.dependencies
+                        },
+                        version: 0
+                    };
+
+                    await supabase
+                        .from('app_storage')
+                        .upsert({ key: 'taskflow-storage', value: payload }, { onConflict: 'key' });
+
+                    set({ cloudSyncStatus: 'success' });
+
+                    setTimeout(() => {
+                        // Revert checkmark to idle after 3 seconds
+                        if (get().cloudSyncStatus === 'success') {
+                            set({ cloudSyncStatus: 'idle' });
+                        }
+                    }, 3000);
+                } catch (e) {
+                    console.error("Manual cloud sync failed", e);
+                    set({ cloudSyncStatus: 'error' });
+                }
+            },
 
             addTask: (title, phase = 'TODO', x = 100, y = 100, data = {}) => {
                 set((state) => ({
@@ -212,6 +254,10 @@ export const useTaskFlowStore = create<TaskFlowState>()(
         }),
         {
             name: 'taskflow-storage',
+            partialize: (state) => ({
+                tasks: state.tasks,
+                dependencies: state.dependencies
+            }),
             storage: {
                 getItem: async (name) => {
                     // 1. ALWAYS check Local Storage first
@@ -252,18 +298,18 @@ export const useTaskFlowStore = create<TaskFlowState>()(
                     return null;
                 },
                 setItem: async (name, value) => {
-                    // 1. Always save to LocalStorage first (Stringify Object)
+                    // 1. Save to LocalStorage IMMEDIATELY (no data loss risk)
                     if (typeof window !== 'undefined') {
                         localStorage.setItem(name, JSON.stringify(value));
                     }
 
-                    // 2. Sync to Supabase (Send Object)
-                    try {
-                        await supabase
-                            .from('app_storage')
-                            .upsert({ key: name, value: value }, { onConflict: 'key' });
-                    } catch (e) {
-                        console.error("Cloud sync failed", e);
+                    // 2. ONLY notify the UI that unsaved changes exist that haven't hit the cloud
+                    // IMPORTANT: We must NOT call this if the status is already 'unsaved' or we are currently syncing,
+                    // otherwise Zustand's persist middleware will detect the state change and call `setItem` again,
+                    // causing an infinite loop (Maximum call stack size exceeded).
+                    const currentStatus = useTaskFlowStore.getState().cloudSyncStatus;
+                    if (currentStatus === 'idle' || currentStatus === 'success') {
+                        useTaskFlowStore.getState().setCloudSyncStatus('unsaved');
                     }
                 },
                 removeItem: async () => { },

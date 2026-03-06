@@ -2,6 +2,28 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase } from '../supabase'
 
+// Debounced Cloud Sync Helper
+const cloudSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const CLOUD_SYNC_DEBOUNCE_MS = 3000; // 3 seconds
+
+const debouncedCloudSync = (name: string, value: any) => {
+    const existing = cloudSyncTimers.get(name);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(async () => {
+        cloudSyncTimers.delete(name);
+        try {
+            await supabase
+                .from('app_storage')
+                .upsert({ key: name, value: value }, { onConflict: 'key' });
+        } catch (e) {
+            console.error("Cloud sync failed", e);
+        }
+    }, CLOUD_SYNC_DEBOUNCE_MS);
+
+    cloudSyncTimers.set(name, timer);
+};
+
 export interface StrategyStep {
     id: string;
     content: string;
@@ -89,21 +111,30 @@ export const useStrategyStore = create<StrategyBoardState>()(
                     return null;
                 },
                 setItem: async (name, value) => {
-                    // 1. Always save to LocalStorage first
+                    // 1. Save to LocalStorage IMMEDIATELY (no data loss risk)
                     if (typeof window !== 'undefined') {
                         localStorage.setItem(name, JSON.stringify(value));
                     }
 
-                    // 2. Sync to Supabase
+                    // 2. DEBOUNCED sync to Supabase (reduces bandwidth)
+                    debouncedCloudSync(name, value);
+                },
+                removeItem: async (name) => {
+                    // 1. Remove from LocalStorage
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem(name);
+                    }
+
+                    // 2. Remove from Supabase
                     try {
                         await supabase
                             .from('app_storage')
-                            .upsert({ key: name, value: value }, { onConflict: 'key' });
+                            .delete()
+                            .eq('key', name);
                     } catch (e) {
-                        console.error("Cloud sync failed", e);
+                        console.error("Cloud delete failed", e);
                     }
                 },
-                removeItem: async () => { },
             },
         }
     )

@@ -1,20 +1,35 @@
 "use client"
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useTaskFlowStore, TaskPhase } from '@/lib/store/taskflow-store';
 import { TaskNode } from './TaskNode';
-import { DependencyArrow } from './DependencyArrow';
-import { Plus, ZoomIn, ZoomOut, Maximize, MousePointer2, Grid } from 'lucide-react';
+import { Plus, Save, Loader2, Check, ServerCrash } from 'lucide-react';
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Button } from "@/components/ui/button"
+import {
+    ReactFlow,
+    Background,
+    Controls,
+    Node,
+    Edge,
+    Connection,
+    useNodesState,
+    useEdgesState,
+    NodeTypes,
+    ReactFlowProvider
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
-export function TaskFlowCanvas() {
-    const { tasks, dependencies, addTask, addDependency } = useTaskFlowStore();
-    const [view, setView] = useState({ x: 0, y: 0, zoom: 1 });
-    const [connecting, setConnecting] = useState<{ fromId: string; px: number; py: number } | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const isPanning = useRef(false);
-    const panStart = useRef({ x: 0, y: 0 });
+const nodeTypes: NodeTypes = {
+    customTask: TaskNode,
+};
+
+function TaskFlowCanvasContent() {
+    const { tasks, dependencies, addTask, addDependency, updateTaskPosition, cloudSyncStatus, syncToCloud } = useTaskFlowStore();
+
+    // Local state for React Flow dragging/selection
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     useEffect(() => {
         // Hydration check effectively
@@ -27,114 +42,70 @@ export function TaskFlowCanvas() {
         }
     }, [tasks.length, addTask]);
 
-    // Handle Panning
-    const handleMouseDown = (e: React.MouseEvent) => {
-        // Prevent panning if clicking on a task node or other interactive elements
-        if ((e.target as HTMLElement).closest('.task-node-interactive')) {
-            return;
+    // Sync store to local state
+    useEffect(() => {
+        setNodes(tasks.map(task => ({
+            id: task.id,
+            type: 'customTask',
+            position: { x: task.x, y: task.y },
+            data: task as any
+        })));
+    }, [tasks, setNodes]);
+
+    useEffect(() => {
+        setEdges(dependencies.map((dep) => {
+            const fromTask = tasks.find(t => t.id === dep.from);
+            const color = fromTask?.phase === 'DOING' ? '#60a5fa' : fromTask?.phase === 'DONE' ? '#22c55e' : '#cbd5e1';
+
+            return {
+                id: `${dep.from}-${dep.to}`,
+                source: dep.from,
+                target: dep.to,
+                type: 'smoothstep', // Gives a nice angled line
+                style: { strokeWidth: 2, stroke: color },
+                animated: fromTask?.phase === 'DOING'
+            };
+        }));
+    }, [dependencies, tasks, setEdges]);
+
+    const onConnect = useCallback((params: Connection) => {
+        if (params.source && params.target) {
+            addDependency(params.source, params.target);
         }
+    }, [addDependency]);
 
-        if (e.button === 0) { // Left click
-            isPanning.current = true;
-            panStart.current = { x: e.clientX - view.x, y: e.clientY - view.y };
-        }
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (isPanning.current) {
-            setView(v => ({
-                ...v,
-                x: e.clientX - panStart.current.x,
-                y: e.clientY - panStart.current.y
-            }));
-        }
-
-        if (connecting) {
-            if (containerRef.current) {
-                const rect = containerRef.current.getBoundingClientRect();
-                const localX = (e.clientX - rect.left - view.x) / view.zoom;
-                const localY = (e.clientY - rect.top - view.y) / view.zoom;
-
-                setConnecting(prev => prev ? { ...prev, px: localX, py: localY } : null);
-            }
-        }
-    };
-
-    const handleMouseUp = () => {
-        isPanning.current = false;
-        if (connecting) {
-            setConnecting(null); // Cancel connection if dropped on nothing
-        }
-    };
-
-    // Wheel Zoom
-    const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const s = Math.exp(-e.deltaY * 0.001); // Smooth zoom
-            const newZoom = Math.min(Math.max(view.zoom * s, 0.1), 3);
-            setView(v => ({ ...v, zoom: newZoom }));
-        } else {
-            // Pan with wheel
-            setView(v => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
-        }
-    };
-
-    // Connection Logic
-    const handleConnectStart = (taskId: string, startX: number, startY: number) => {
-        setConnecting({ fromId: taskId, px: startX, py: startY });
-    };
-
-    const handleConnectEnd = (targetId: string) => {
-        if (connecting && connecting.fromId !== targetId) {
-            addDependency(connecting.fromId, targetId);
-            setConnecting(null);
-        }
-    };
+    const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+        updateTaskPosition(node.id, Math.round(node.position.x), Math.round(node.position.y));
+    }, [updateTaskPosition]);
 
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
             <PageHeader items={[{ label: 'Workspace' }, { label: 'TaskFlow' }]}>
                 <div className="flex items-center gap-2">
-                    {/* Zoom Controls */}
-                    <div className="flex items-center gap-1 border rounded-md p-0.5 bg-background shadow-sm mr-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setView(v => ({ ...v, zoom: v.zoom / 1.2 }))}
-                        >
-                            <ZoomOut className="h-4 w-4" />
-                        </Button>
-                        <span className="text-xs font-medium w-10 text-center">{Math.round(view.zoom * 100)}%</span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setView(v => ({ ...v, zoom: v.zoom * 1.2 }))}
-                        >
-                            <ZoomIn className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
-                        >
-                            <Maximize className="h-4 w-4" />
-                        </Button>
-                    </div>
+                    <Button
+                        size="sm"
+                        variant={cloudSyncStatus === 'unsaved' ? 'default' : 'outline'}
+                        onClick={() => syncToCloud()}
+                        disabled={cloudSyncStatus === 'syncing' || cloudSyncStatus === 'idle' || cloudSyncStatus === 'success'}
+                        className={`h-8 gap-2 mr-2 transition-all ${cloudSyncStatus === 'unsaved' ? 'bg-orange-500 hover:bg-orange-600 text-white border-none shadow-sm' : ''}`}
+                    >
+                        {cloudSyncStatus === 'syncing' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        {cloudSyncStatus === 'success' && <Check className="h-3.5 w-3.5 text-green-600" />}
+                        {cloudSyncStatus === 'error' && <ServerCrash className="h-3.5 w-3.5 text-red-500" />}
+                        {(cloudSyncStatus === 'idle' || cloudSyncStatus === 'unsaved') && <Save className="h-3.5 w-3.5" />}
 
-                    <div className="h-4 w-px bg-slate-200 mx-1" />
+                        {cloudSyncStatus === 'syncing' ? 'Saving...' :
+                            cloudSyncStatus === 'success' ? 'Saved' :
+                                cloudSyncStatus === 'error' ? 'Retry Save' :
+                                    cloudSyncStatus === 'unsaved' ? 'Save Changes' : 'Saved'}
+                    </Button>
 
                     <Button
                         size="sm"
                         onClick={() => {
-                            const centerX = (-view.x + (typeof window !== 'undefined' ? window.innerWidth : 1000) / 2) / view.zoom;
-                            const centerY = (-view.y + (typeof window !== 'undefined' ? window.innerHeight : 800) / 2) / view.zoom;
-                            addTask('New Task', 'TODO', Math.max(50, centerX), Math.max(50, centerY));
+                            addTask('New Task', 'TODO', window.innerWidth / 2 - 120, window.innerHeight / 2 - 100);
                         }}
-                        className="h-8 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                        className="h-8 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                     >
                         <Plus className="h-3.5 w-3.5" />
                         Add Node
@@ -142,83 +113,32 @@ export function TaskFlowCanvas() {
                 </div>
             </PageHeader>
 
-            <div
-                ref={containerRef}
-                className="flex-1 w-full relative overflow-hidden cursor-grab active:cursor-grabbing font-sans bg-[#f8fafc]"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onWheel={handleWheel}
-                style={{
-                    // Dotted grid background
-                    backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
-                    backgroundSize: '20px 20px'
-                }}
-            >
-                {/* Transform Layer */}
-                <div
-                    style={{
-                        transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
-                        transformOrigin: '0 0',
-                        width: '100%',
-                        height: '100%'
-                    }}
-                    className="w-full h-full relative"
+            <div className="flex-1 w-full relative">
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onNodeDragStop={onNodeDragStop}
+                    nodeTypes={nodeTypes}
+                    fitView
+                    minZoom={0.1}
+                    maxZoom={3}
+                    className="bg-[#f8fafc]"
                 >
-                    {/* Existing Dependencies */}
-                    {dependencies.map((dep) => {
-                        const fromTask = tasks.find(t => t.id === dep.from);
-                        const toTask = tasks.find(t => t.id === dep.to);
-                        if (!fromTask || !toTask) return null;
-
-                        // Start from right of fromTask, End at left of toTask
-                        const start = { x: fromTask.x + 240, y: fromTask.y + 100 }; // 240 width, 100 approx half height
-                        const end = { x: toTask.x, y: toTask.y + 100 };
-
-                        return (
-                            <DependencyArrow
-                                key={`${dep.from}-${dep.to}`}
-                                start={start}
-                                end={end}
-                                status={fromTask.done ? 'satisfied' : 'pending'}
-                                color={fromTask.phase === 'DOING' ? '#60a5fa' : fromTask.phase === 'DONE' ? '#22c55e' : '#cbd5e1'}
-                            />
-                        );
-                    })}
-
-                    {/* Temporary Connection Line */}
-                    {connecting && (() => {
-                        const fromTask = tasks.find(t => t.id === connecting.fromId);
-                        if (!fromTask) return null;
-                        const start = { x: fromTask.x + 240, y: fromTask.y + 100 };
-                        return (
-                            <DependencyArrow
-                                start={start}
-                                end={{ x: connecting.px, y: connecting.py }}
-                                status="pending"
-                                color="#60a5fa"
-                            />
-                        );
-                    })()}
-
-                    {/* Tasks */}
-                    {tasks.map(task => (
-                        <div
-                            key={task.id}
-                            onMouseUp={(e) => {
-                                // No column switching logic anymore - free positioning
-                            }}
-                        >
-                            <TaskNode
-                                task={task}
-                                onConnectStart={handleConnectStart}
-                                onConnectEnd={handleConnectEnd}
-                                isConnecting={!!connecting}
-                            />
-                        </div>
-                    ))}
-                </div>
+                    <Background color="#cbd5e1" gap={20} size={1} />
+                    <Controls />
+                </ReactFlow>
             </div>
         </div>
+    );
+}
+
+export function TaskFlowCanvas() {
+    return (
+        <ReactFlowProvider>
+            <TaskFlowCanvasContent />
+        </ReactFlowProvider>
     );
 }

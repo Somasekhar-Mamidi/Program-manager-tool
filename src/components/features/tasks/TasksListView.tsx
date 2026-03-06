@@ -4,7 +4,7 @@ import React from "react"
 import { useCalendarStore } from "@/lib/store/calendar-store"
 import { IntentBlock } from "@/types"
 import { format } from "date-fns"
-import { List, RowComponentProps } from "react-window"
+import { FixedSizeList, ListChildComponentProps } from "react-window"
 import { AutoSizer } from "react-virtualized-auto-sizer"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -67,7 +67,7 @@ export function TasksListView({ onSelectTask, selectedTaskId, tasks: initialTask
         });
     };
 
-    const Row = ({ index, style }: RowComponentProps) => {
+    const Row = ({ index, style }: ListChildComponentProps) => {
         const task = tasks[index];
         const isSelected = selectedTaskId === task.id;
 
@@ -231,13 +231,14 @@ export function TasksListView({ onSelectTask, selectedTaskId, tasks: initialTask
                 {tasks.length > 0 ? (
                     <AutoSizerAny>
                         {({ height, width }: { height: number; width: number }) => (
-                            <List
-                                style={{ height, width }}
-                                rowCount={tasks.length}
-                                rowHeight={72}
-                                rowComponent={Row}
-                                rowProps={{}}
-                            />
+                            <FixedSizeList
+                                height={height}
+                                width={width}
+                                itemCount={tasks.length}
+                                itemSize={72}
+                            >
+                                {Row}
+                            </FixedSizeList>
                         )}
                     </AutoSizerAny>
                 ) : (

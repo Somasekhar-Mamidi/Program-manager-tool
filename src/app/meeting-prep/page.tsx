@@ -50,7 +50,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { compressImage } from "@/lib/image-compression"
+import { compressImageToBlob } from "@/lib/image-compression"
+import { uploadFileToStorage } from "@/lib/supabase-upload"
 import dynamic from "next/dynamic"
 
 const RichTextEditor = dynamic(
@@ -1048,24 +1049,16 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                                     const isImage = file.type.startsWith('image/');
                                                                     let url = "";
 
-                                                                    if (isImage) {
-                                                                        try {
-                                                                            url = await compressImage(file);
-                                                                        } catch (err) {
-                                                                            console.error(err);
-                                                                            continue;
+                                                                    try {
+                                                                        if (isImage) {
+                                                                            const blob = await compressImageToBlob(file);
+                                                                            url = await uploadFileToStorage(blob, file.name);
+                                                                        } else {
+                                                                            url = await uploadFileToStorage(file);
                                                                         }
-                                                                    } else {
-                                                                        if (file.size > 2.5 * 1024 * 1024) {
-                                                                            alert(`File ${file.name} too large (Max 2.5MB).`)
-                                                                            continue
-                                                                        }
-                                                                        // Read file as data URL
-                                                                        url = await new Promise((resolve) => {
-                                                                            const reader = new FileReader();
-                                                                            reader.onloadend = () => resolve(reader.result as string);
-                                                                            reader.readAsDataURL(file);
-                                                                        })
+                                                                    } catch (err) {
+                                                                        console.error('Upload failed:', err);
+                                                                        continue;
                                                                     }
 
                                                                     const resource: MeetingResource = {
@@ -1221,34 +1214,21 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                         const file = e.target.files?.[0]
                                                         if (file) {
                                                             const isImage = file.type.startsWith('image/');
+                                                            setResTitle(file.name);
 
-                                                            if (isImage) {
-                                                                try {
-                                                                    const compressed = await compressImage(file);
-                                                                    setResTitle(file.name);
-                                                                    setResUrl(compressed);
-                                                                } catch (err) {
-                                                                    console.error(err);
-                                                                    alert("Failed to compress image.");
+                                                            try {
+                                                                let url: string;
+                                                                if (isImage) {
+                                                                    const blob = await compressImageToBlob(file);
+                                                                    url = await uploadFileToStorage(blob, file.name);
+                                                                } else {
+                                                                    url = await uploadFileToStorage(file);
                                                                 }
-                                                                return;
+                                                                setResUrl(url);
+                                                            } catch (err) {
+                                                                console.error('Upload failed:', err);
+                                                                alert("Failed to upload file.");
                                                             }
-
-                                                            // Limit file size to ~2.5MB for localStorage safety
-                                                            if (file.size > 2.5 * 1024 * 1024) {
-                                                                alert("File is too large for local demo storage (Max 2.5MB).")
-                                                                return;
-                                                            }
-
-                                                            setResTitle(file.name)
-
-                                                            // Convert to Base64 for persistence
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                const base64 = reader.result as string;
-                                                                setResUrl(base64);
-                                                            };
-                                                            reader.readAsDataURL(file);
                                                         }
                                                     }}
                                                 />
@@ -1477,27 +1457,21 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                         const file = e.target.files?.[0]
                                                         if (file) {
                                                             const isImage = file.type.startsWith('image/');
-                                                            if (isImage) {
-                                                                try {
-                                                                    const compressed = await compressImage(file);
-                                                                    setNResTitle(file.name);
-                                                                    setNResUrl(compressed);
-                                                                } catch (err) {
-                                                                    console.error(err);
-                                                                    alert("Failed to compress image.");
+                                                            setNResTitle(file.name);
+
+                                                            try {
+                                                                let url: string;
+                                                                if (isImage) {
+                                                                    const blob = await compressImageToBlob(file);
+                                                                    url = await uploadFileToStorage(blob, file.name);
+                                                                } else {
+                                                                    url = await uploadFileToStorage(file);
                                                                 }
-                                                                return;
+                                                                setNResUrl(url);
+                                                            } catch (err) {
+                                                                console.error('Upload failed:', err);
+                                                                alert("Failed to upload file.");
                                                             }
-                                                            if (file.size > 2.5 * 1024 * 1024) {
-                                                                alert("File too large (Max 2.5MB).")
-                                                                return
-                                                            }
-                                                            setNResTitle(file.name)
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                setNResUrl(reader.result as string)
-                                                            };
-                                                            reader.readAsDataURL(file);
                                                         }
                                                     }}
                                                 />
@@ -1580,18 +1554,24 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                     <div className="space-y-4 py-4">
                         <div className="flex flex-col gap-2">
                             <Label>Select Target Meeting</Label>
-                            <Select value={targetMeetingId} onValueChange={setTargetMeetingId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a meeting..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {upcomingMeetings.filter(m => m.id !== meeting.id).map(m => (
-                                        <SelectItem key={m.id} value={m.id}>
-                                            <span className="font-medium">{m.date} {m.scheduledTime}</span> - {m.objective}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {upcomingMeetings.filter(m => m.id !== meeting.id).length === 0 ? (
+                                <p className="text-sm text-muted-foreground py-2">
+                                    No other upcoming meetings available.
+                                </p>
+                            ) : (
+                                <Select value={targetMeetingId} onValueChange={setTargetMeetingId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a meeting..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {upcomingMeetings.filter(m => m.id !== meeting.id).map(m => (
+                                            <SelectItem key={m.id} value={m.id}>
+                                                <span className="font-medium">{m.date} {m.scheduledTime}</span> - {m.objective}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -1969,7 +1949,7 @@ function SortableNoteItem({
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={onMove}>
                                     <ArrowRight className="mr-2 h-4 w-4" />
-                                    Move to Next Meeting
+                                    Move to Another Meeting
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={onConvert}>
                                     <ListTodo className="mr-2 h-4 w-4" />

@@ -1,26 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
 import { Task, useTaskFlowStore } from '@/lib/store/taskflow-store';
 import { cn } from '@/lib/utils';
 import { Calendar, User, MoreHorizontal, Pencil, Trash } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from "@/components/ui/button";
+import { Handle, Position } from '@xyflow/react';
 
 interface TaskNodeProps {
-    task: Task;
-    onConnectStart: (taskId: string, startX: number, startY: number) => void;
-    onConnectEnd: (taskId: string) => void;
-    isConnecting: boolean;
+    data: Task;
+    isConnectable: boolean;
 }
 
-export const TaskNode: React.FC<TaskNodeProps> = ({
-    task,
-    onConnectStart,
-    // onConnectEnd, // Handled implicitly by drop on container? No, we need to pass it up or handle here.
-    // Actually, parent handles drop logic.
-    isConnecting
-}) => {
-    const { updateTaskPosition, updateTaskTitle, deleteTask, updateTask } = useTaskFlowStore();
+export const TaskNode = ({
+    data: task,
+    isConnectable
+}: TaskNodeProps) => {
+    const { updateTaskTitle, deleteTask } = useTaskFlowStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [localTitle, setLocalTitle] = useState(task.title);
@@ -38,12 +33,6 @@ export const TaskNode: React.FC<TaskNodeProps> = ({
         'DONE': 'Completed'
     }[task.phase];
 
-    const handleDragEnd = (_: any, info: any) => {
-        const newX = Math.round(task.x + info.offset.x);
-        const newY = Math.round(task.y + info.offset.y);
-        updateTaskPosition(task.id, newX, newY);
-    };
-
     const handleTitleSubmit = () => {
         setIsEditing(false);
         if (localTitle.trim() !== task.title) {
@@ -51,33 +40,25 @@ export const TaskNode: React.FC<TaskNodeProps> = ({
         }
     };
 
-    const onConnectionHandlePointerDown = (e: React.PointerEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        onConnectStart(task.id, task.x + 240, task.y + 100); // Approximate center-right of the new larger card
-    };
-
     return (
-        <motion.div
-            drag
-            dragMomentum={false}
-            onDragEnd={handleDragEnd}
-            initial={{ x: task.x, y: task.y }}
-            animate={{ x: task.x, y: task.y }}
-            transition={{ duration: 0 }}
-            onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
+        <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                "absolute w-[240px] bg-white rounded-xl shadow-md border cursor-grab active:cursor-grabbing z-10 font-sans group select-none flex flex-col transition-all duration-200",
+                "w-[240px] bg-white rounded-xl shadow-md border z-10 font-sans group select-none flex flex-col transition-all duration-200",
                 isHovered ? "shadow-lg scale-[1.02]" : "shadow-sm",
                 // "Frontend Development" style selection ring - using blue ring if DOING
                 task.phase === 'DOING' ? "ring-2 ring-blue-400 border-blue-400" : "border-slate-100"
             )}
         >
+            {/* Target Handle (Left) */}
+            <Handle
+                type="target"
+                position={Position.Left}
+                isConnectable={isConnectable}
+                className="w-3 h-3 bg-slate-300 border-2 border-white pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+
             {/* Top Status Badge */}
             <div className="p-4 pb-2">
                 <div className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mb-3", statusColor)}>
@@ -179,18 +160,13 @@ export const TaskNode: React.FC<TaskNodeProps> = ({
                 </Popover>
             </div>
 
-            {/* Connection Handles (Left and Right) */}
-            <div
-                className={cn(
-                    "absolute -right-3 top-[40%] w-6 h-6 rounded-full flex items-center justify-center cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity z-20",
-                    isConnecting ? "opacity-0 !pointer-events-none" : ""
-                )}
-                onPointerDown={onConnectionHandlePointerDown}
-            >
-                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-white shadow-sm" />
-            </div>
-            {/* We can act as a target anywhere on the body, handled by the canvas logic mainly, or we can add a left handle visual if needed. Expected: Drop on node to connect. */}
-
-        </motion.div>
+            {/* Source Handle (Right) */}
+            <Handle
+                type="source"
+                position={Position.Right}
+                isConnectable={isConnectable}
+                className="w-4 h-4 bg-blue-500 border-2 border-white pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+        </div>
     );
 };

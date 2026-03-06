@@ -1,14 +1,16 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Download, RefreshCcw } from "lucide-react"
+import { Download, RefreshCcw, Database } from "lucide-react"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { DataMigration } from "./DataMigration"
 
 export function DataRecovery() {
     const [exists, setExists] = useState(false)
     const [size, setSize] = useState(0)
+    const [showMigration, setShowMigration] = useState(false)
 
     useEffect(() => {
         const checkData = async () => {
@@ -114,7 +116,7 @@ export function DataRecovery() {
     if (!exists) return null
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 bg-background border p-4 rounded-lg shadow-xl">
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 bg-background border p-4 rounded-lg shadow-xl max-w-sm">
             <div className="text-sm font-medium mb-1">Data: {(size / 1024).toFixed(2)} KB</div>
             <Button onClick={handleBackup} size="sm" variant="outline" className="w-full">
                 <Download className="mr-2 h-4 w-4" />
@@ -124,6 +126,11 @@ export function DataRecovery() {
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Restore JSON
             </Button>
+            <Button onClick={() => setShowMigration(!showMigration)} size="sm" variant="outline" className="w-full">
+                <Database className="mr-2 h-4 w-4" />
+                {showMigration ? 'Hide Migration' : 'Migrate to Storage'}
+            </Button>
+            {showMigration && <DataMigration />}
         </div>
     )
 }

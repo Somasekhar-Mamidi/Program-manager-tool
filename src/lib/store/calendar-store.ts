@@ -30,11 +30,116 @@ interface CalendarState {
     addCharter: (charter: Omit<Charter, 'id' | 'createdAt' | 'resources'>) => void;
     updateCharter: (id: string, updates: Partial<Charter>) => void;
     deleteCharter: (id: string) => void;
+
+    cloudSyncStatus: 'idle' | 'syncing' | 'error' | 'success';
+    setCloudSyncStatus: (status: 'idle' | 'syncing' | 'error' | 'success') => void;
+}
+
+// Debounced Cloud Sync Helper
+const cloudSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const CLOUD_SYNC_DEBOUNCE_MS = 3000; // 3 seconds
+
+const debouncedCloudSync = (name: string, value: any, storeRef: () => any) => {
+    // Clear any previous pending sync for this key
+    const existing = cloudSyncTimers.get(name);
+    if (existing) clearTimeout(existing);
+
+    storeRef().setCloudSyncStatus('syncing');
+
+    const timer = setTimeout(async () => {
+        cloudSyncTimers.delete(name);
+        try {
+            await supabase
+                .from('app_storage')
+                .upsert({ key: name, value: value }, { onConflict: 'key' });
+            storeRef().setCloudSyncStatus('success');
+
+            // Clear from retry queue if it exists there
+            const queue = getRetryQueue();
+            if (queue.some(item => item.key === name)) {
+                const newQueue = queue.filter(item => item.key !== name);
+                localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(newQueue));
+            }
+        } catch (e) {
+            console.error("Cloud sync failed", e);
+            storeRef().setCloudSyncStatus('error');
+            addToRetryQueue(name, value);
+        }
+    }, CLOUD_SYNC_DEBOUNCE_MS);
+
+    cloudSyncTimers.set(name, timer);
+};
+
+// Retry Queue Helpers
+const RETRY_QUEUE_KEY = 'msc_retry_queue';
+
+interface RetryItem {
+    key: string;
+    value: any;
+    timestamp: number;
+    attempts: number;
+}
+
+const getRetryQueue = (): RetryItem[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+        const item = localStorage.getItem(RETRY_QUEUE_KEY);
+        return item ? JSON.parse(item) : [];
+    } catch {
+        return [];
+    }
+};
+
+const addToRetryQueue = (key: string, value: any) => {
+    const queue = getRetryQueue();
+    // Update existing or add new
+    const existingIndex = queue.findIndex(item => item.key === key);
+    if (existingIndex >= 0) {
+        queue[existingIndex] = { key, value, timestamp: Date.now(), attempts: queue[existingIndex].attempts };
+    } else {
+        queue.push({ key, value, timestamp: Date.now(), attempts: 0 });
+    }
+    localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(queue));
+};
+
+const processRetryQueue = async () => {
+    const queue = getRetryQueue();
+    if (queue.length === 0) return;
+
+    const newQueue: RetryItem[] = [];
+    let hasSuccess = false;
+
+    for (const item of queue) {
+        try {
+            await supabase
+                .from('app_storage')
+                .upsert({ key: item.key, value: item.value }, { onConflict: 'key' });
+            hasSuccess = true;
+        } catch (e) {
+            console.error("Retry failed for", item.key, e);
+            newQueue.push({ ...item, attempts: item.attempts + 1 });
+        }
+    }
+
+    localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(newQueue));
+
+    if (newQueue.length === 0 && hasSuccess) {
+        useCalendarStore.getState().setCloudSyncStatus('success');
+    }
+};
+
+// Start processing retry queue periodically
+if (typeof window !== 'undefined') {
+    setInterval(processRetryQueue, 120000); // Retry every 120s (reduced from 30s to save bandwidth)
+    window.addEventListener('online', processRetryQueue);
 }
 
 export const useCalendarStore = create<CalendarState>()(
     persist(
         (set) => ({
+            cloudSyncStatus: 'idle',
+            setCloudSyncStatus: (status) => set({ cloudSyncStatus: status }),
+
             intents: [
                 // --- Mock Data for Weekly Calendar Grid (Oct 28 - Nov 3) ---
                 {
@@ -451,6 +556,12 @@ export const useCalendarStore = create<CalendarState>()(
         }),
         {
             name: 'msc-storage',
+            partialize: (state) => ({
+                intents: state.intents,
+                daySummaries: state.daySummaries,
+                goals: state.goals,
+                charters: state.charters
+            }),
             storage: {
                 getItem: async (name) => {
                     // 1. ALWAYS check Local Storage first
@@ -505,20 +616,13 @@ export const useCalendarStore = create<CalendarState>()(
                     return null;
                 },
                 setItem: async (name, value) => {
-                    // value is StorageValue<S> (Object)
-                    // 1. Save to LocalStorage (Stringify first!)
+                    // 1. Save to LocalStorage IMMEDIATELY (no data loss risk)
                     if (typeof window !== 'undefined') {
                         localStorage.setItem(name, JSON.stringify(value));
                     }
 
-                    // 2. Sync to Supabase (Send Object)
-                    try {
-                        await supabase
-                            .from('app_storage')
-                            .upsert({ key: name, value: value }, { onConflict: 'key' });
-                    } catch (e) {
-                        console.error("Cloud sync failed", e);
-                    }
+                    // 2. DEBOUNCED sync to Supabase (reduces bandwidth)
+                    debouncedCloudSync(name, value, () => useCalendarStore.getState());
                 },
                 removeItem: async (name) => {
                     // no-op

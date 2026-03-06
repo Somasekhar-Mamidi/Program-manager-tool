@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { storage } from "@/lib/storage"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import DOMPurify from 'isomorphic-dompurify';
 import {
     CalendarClock,
     Plus,
@@ -45,7 +46,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { compressImage } from "@/lib/image-compression"
+import { compressImageToBlob } from "@/lib/image-compression"
+import { uploadFileToStorage } from "@/lib/supabase-upload"
 import dynamic from "next/dynamic"
 
 const RichTextEditor = dynamic(
@@ -728,6 +730,9 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
         setIsDraggingFile(false);
         const files = e.dataTransfer.files;
         if (files && files.length > 0) {
+            const newResources: MeetingResource[] = [];
+            const initialResources = meeting.resources || [];
+
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const isImage = file.type.startsWith('image/');
@@ -760,8 +765,14 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                     createdAt: Date.now()
                 };
 
-                const currentResources = meeting.resources || [];
-                updateIntent(meeting.id, { resources: [...currentResources, newResource] });
+                newResources.push(newResource);
+
+                // Optional: Update optimistically per file if desired, ensuring we always tack onto the *original* list + *all new so far*
+                // But doing it once at the end as requested by the prompt for safety/simplicity
+            }
+
+            if (newResources.length > 0) {
+                updateIntent(meeting.id, { resources: [...initialResources, ...newResources] });
             }
         }
     };
@@ -1040,24 +1051,17 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                                     const isImage = file.type.startsWith('image/');
                                                                     let url = "";
 
-                                                                    if (isImage) {
-                                                                        try {
-                                                                            url = await compressImage(file);
-                                                                        } catch (err) {
-                                                                            console.error(err);
-                                                                            continue;
+                                                                    try {
+                                                                        if (isImage) {
+                                                                            const blob = await compressImageToBlob(file);
+                                                                            url = await uploadFileToStorage(blob, file.name);
+                                                                        } else {
+                                                                            url = await uploadFileToStorage(file);
                                                                         }
-                                                                    } else {
-                                                                        if (file.size > 2.5 * 1024 * 1024) {
-                                                                            alert(`File ${file.name} too large (Max 2.5MB).`)
-                                                                            continue
-                                                                        }
-                                                                        // Read file as data URL
-                                                                        url = await new Promise((resolve) => {
-                                                                            const reader = new FileReader();
-                                                                            reader.onloadend = () => resolve(reader.result as string);
-                                                                            reader.readAsDataURL(file);
-                                                                        })
+                                                                    } catch (err) {
+                                                                        console.error('Upload failed:', err);
+                                                                        alert(`Failed to upload ${file.name}`);
+                                                                        continue;
                                                                     }
 
                                                                     const resource: MeetingResource = {
@@ -1206,34 +1210,21 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                         const file = e.target.files?.[0]
                                                         if (file) {
                                                             const isImage = file.type.startsWith('image/');
+                                                            setResTitle(file.name);
 
-                                                            if (isImage) {
-                                                                try {
-                                                                    const compressed = await compressImage(file);
-                                                                    setResTitle(file.name);
-                                                                    setResUrl(compressed);
-                                                                } catch (err) {
-                                                                    console.error(err);
-                                                                    alert("Failed to compress image.");
+                                                            try {
+                                                                let url: string;
+                                                                if (isImage) {
+                                                                    const blob = await compressImageToBlob(file);
+                                                                    url = await uploadFileToStorage(blob, file.name);
+                                                                } else {
+                                                                    url = await uploadFileToStorage(file);
                                                                 }
-                                                                return;
+                                                                setResUrl(url);
+                                                            } catch (err) {
+                                                                console.error('Upload failed:', err);
+                                                                alert("Failed to upload file.");
                                                             }
-
-                                                            // Limit file size to ~2.5MB for localStorage safety
-                                                            if (file.size > 2.5 * 1024 * 1024) {
-                                                                alert("File is too large for local demo storage (Max 2.5MB).")
-                                                                return;
-                                                            }
-
-                                                            setResTitle(file.name)
-
-                                                            // Convert to Base64 for persistence
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                const base64 = reader.result as string;
-                                                                setResUrl(base64);
-                                                            };
-                                                            reader.readAsDataURL(file);
                                                         }
                                                     }}
                                                 />
@@ -1289,9 +1280,14 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                             .then(blob => {
                                                                 const objUrl = URL.createObjectURL(blob);
                                                                 const newWin = window.open(objUrl, '_blank');
-                                                                // Optional: cleanup? Browsers usually handle object URL cleanup on unload, but we could revoke later. 
-                                                                // For now, let it persist for the session.
-                                                                if (!newWin) alert("Please allow popups to view this file.");
+                                                                if (newWin) {
+                                                                    newWin.onload = () => URL.revokeObjectURL(objUrl);
+                                                                    // Fallback cleanup if onload doesn't fire (e.g. cross-origin restriction) or just to be safe after some time
+                                                                    setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+                                                                } else {
+                                                                    URL.revokeObjectURL(objUrl);
+                                                                    alert("Please allow popups to view this file.");
+                                                                }
                                                             });
                                                     } else {
                                                         window.open(url, '_blank', 'noopener,noreferrer');
@@ -1454,27 +1450,21 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                                         const file = e.target.files?.[0]
                                                         if (file) {
                                                             const isImage = file.type.startsWith('image/');
-                                                            if (isImage) {
-                                                                try {
-                                                                    const compressed = await compressImage(file);
-                                                                    setNResTitle(file.name);
-                                                                    setNResUrl(compressed);
-                                                                } catch (err) {
-                                                                    console.error(err);
-                                                                    alert("Failed to compress image.");
+                                                            setNResTitle(file.name);
+
+                                                            try {
+                                                                let url: string;
+                                                                if (isImage) {
+                                                                    const blob = await compressImageToBlob(file);
+                                                                    url = await uploadFileToStorage(blob, file.name);
+                                                                } else {
+                                                                    url = await uploadFileToStorage(file);
                                                                 }
-                                                                return;
+                                                                setNResUrl(url);
+                                                            } catch (err) {
+                                                                console.error('Upload failed:', err);
+                                                                alert("Failed to upload file.");
                                                             }
-                                                            if (file.size > 2.5 * 1024 * 1024) {
-                                                                alert("File too large (Max 2.5MB).")
-                                                                return
-                                                            }
-                                                            setNResTitle(file.name)
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                setNResUrl(reader.result as string)
-                                                            };
-                                                            reader.readAsDataURL(file);
                                                         }
                                                     }}
                                                 />
@@ -1683,7 +1673,7 @@ function SortableQuestionItem({
                                 "text-base leading-relaxed prose prose-base dark:prose-invert max-w-none [&>p]:mb-0 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4",
                                 q.isAnswered && "opacity-60 line-through decoration-slate-400"
                             )}
-                            dangerouslySetInnerHTML={{ __html: q.text }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(q.text) }}
                         />
                         <div className="flex flex-wrap items-center gap-2">
                             {q.isMustAsk && (
@@ -1709,7 +1699,14 @@ function SortableQuestionItem({
                                                 .then(blob => {
                                                     const objUrl = URL.createObjectURL(blob);
                                                     const newWin = window.open(objUrl, '_blank');
-                                                    if (!newWin) alert("Please allow popups to view this file.");
+                                                    if (newWin) {
+                                                        newWin.onload = () => URL.revokeObjectURL(objUrl);
+                                                        // Fallback cleanup
+                                                        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+                                                    } else {
+                                                        URL.revokeObjectURL(objUrl);
+                                                        alert("Please allow popups to view this file.");
+                                                    }
                                                 });
                                         } else {
                                             window.open(url, '_blank', 'noopener,noreferrer');
@@ -1832,7 +1829,7 @@ function SortableNoteItem({
                                 "text-base leading-relaxed prose prose-base dark:prose-invert max-w-none [&>p]:mb-0 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4",
                                 note.isCompleted && "opacity-60 line-through decoration-slate-400"
                             )}
-                            dangerouslySetInnerHTML={{ __html: note.text }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.text) }}
                         />
                         <div className="flex flex-wrap items-center gap-2">
                             {note.isImportant && (
@@ -1858,7 +1855,14 @@ function SortableNoteItem({
                                                 .then(blob => {
                                                     const objUrl = URL.createObjectURL(blob);
                                                     const newWin = window.open(objUrl, '_blank');
-                                                    if (!newWin) alert("Please allow popups to view this file.");
+                                                    if (newWin) {
+                                                        newWin.onload = () => URL.revokeObjectURL(objUrl);
+                                                        // Fallback cleanup
+                                                        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+                                                    } else {
+                                                        URL.revokeObjectURL(objUrl);
+                                                        alert("Please allow popups to view this file.");
+                                                    }
                                                 });
                                         } else {
                                             window.open(url, '_blank', 'noopener,noreferrer');
