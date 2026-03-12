@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils"
 import { ChevronRight } from "lucide-react"
 
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { AnimeThemeToggle } from "@/components/ui/anime-theme-toggle"
+import { CloudSyncButton } from "@/components/ui/cloud-sync-button"
 
 interface PageHeaderProps {
     items: { label: string, href?: string }[]
@@ -33,7 +35,21 @@ export function PageHeader({ items, children, className }: PageHeaderProps) {
 
             {/* Toolbar Area */}
             <div className="flex items-center gap-2">
-                {children}
+                {/* Page-specific actions (Start My Day, End Day, View Day, etc.) */}
+                {children && (
+                    <>
+                        <div className="flex items-center gap-2">
+                            {children}
+                        </div>
+                        <div className="h-5 w-px bg-border mx-1" />
+                    </>
+                )}
+
+                {/* Utility actions (Save, Theme) */}
+                <div className="flex items-center gap-1.5">
+                    <CloudSyncButton />
+                    <AnimeThemeToggle />
+                </div>
             </div>
         </div>
     )

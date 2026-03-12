@@ -45,7 +45,7 @@ export const TaskNode = ({
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                "w-[240px] bg-white rounded-xl shadow-md border z-10 font-sans group select-none flex flex-col transition-all duration-200",
+                "relative w-[240px] bg-white rounded-xl shadow-md border z-10 font-sans group select-none flex flex-col transition-all duration-200",
                 isHovered ? "shadow-lg scale-[1.02]" : "shadow-sm",
                 // "Frontend Development" style selection ring - using blue ring if DOING
                 task.phase === 'DOING' ? "ring-2 ring-blue-400 border-blue-400" : "border-slate-100"

@@ -28,6 +28,7 @@ import { useState } from "react"
 import { IntentBlock, MeetingQuestion, MeetingResource, ResourceType, MeetingNoteItem } from "@/types"
 import { cn } from "@/lib/utils"
 import { AddIntentDialog } from "@/components/features/calendar/AddIntentDialog"
+import { PageHeader } from "@/components/layout/PageHeader"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -129,22 +130,17 @@ export default function TaskResourcesPage() {
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
+            <PageHeader items={[{ label: 'Workspace' }, { label: 'Task Resources' }]}>
+                <AddIntentDialog date={new Date()} open={isAddResourceOpen} onOpenChange={setIsAddResourceOpen} isTaskResource={true}>
+                    <Button size="sm" className="gap-2 h-8">
+                        <Plus className="h-4 w-4" />
+                        Add Task Resource
+                    </Button>
+                </AddIntentDialog>
+            </PageHeader>
             <div className="flex-1 overflow-y-auto p-6">
                 <div className="space-y-8 max-w-5xl mx-auto">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex flex-col gap-2">
-                            <h1 className="text-4xl font-bold tracking-tight">Task &lt; &gt; Resources</h1>
-                            <p className="text-lg text-muted-foreground">
-                                Manage tasks and their associated resources in one place.
-                            </p>
-                        </div>
-                        <AddIntentDialog date={new Date()} open={isAddResourceOpen} onOpenChange={setIsAddResourceOpen} isTaskResource={true}>
-                            <Button size="lg" className="gap-2">
-                                <Plus className="h-5 w-5" />
-                                Add Task Resource
-                            </Button>
-                        </AddIntentDialog>
-                    </div>
+
 
                     <Tabs defaultValue="active" className="w-full">
                         <div className="flex items-center justify-between mb-8">

@@ -54,17 +54,17 @@ export default function TasksPage() {
     ]
 
     return (
-        <div className="flex flex-col h-full bg-slate-50/30">
+        <div className="flex flex-col h-full bg-background">
             <ErrorBoundary>
                 <PageHeader items={[{ label: 'Workspace' }, { label: 'Tasks' }]}>
                     <div className="flex items-center gap-2">
-                        <div className="flex bg-slate-100 p-1 rounded-lg border">
+                        <div className="flex bg-muted p-1 rounded-lg border">
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 className={cn(
                                     "h-7 px-2.5 text-xs font-medium",
-                                    viewMode === 'board' ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-900"
+                                    viewMode === 'board' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                                 onClick={() => setViewMode('board')}
                             >
@@ -76,7 +76,7 @@ export default function TasksPage() {
                                 size="sm"
                                 className={cn(
                                     "h-7 px-2.5 text-xs font-medium",
-                                    viewMode === 'list' ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-200" : "text-slate-500 hover:text-slate-900"
+                                    viewMode === 'list' ? "bg-primary/10 text-primary shadow-sm border border-primary/20" : "text-muted-foreground hover:text-foreground"
                                 )}
                                 onClick={() => setViewMode('list')}
                             >
@@ -87,7 +87,7 @@ export default function TasksPage() {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className={cn("h-9 gap-2 bg-white", statusFilter ? "text-blue-600 border-blue-200 bg-blue-50" : "text-slate-600")}>
+                                <Button variant="outline" size="sm" className={cn("h-9 gap-2 bg-background", statusFilter ? "text-primary border-primary/30 bg-primary/10" : "text-muted-foreground")}>
                                     <SlidersHorizontal className="h-4 w-4" />
                                     {statusFilter ? statuses.find(s => s.value === statusFilter)?.label : "Filter"}
                                 </Button>
@@ -116,7 +116,7 @@ export default function TasksPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <Button variant="outline" size="sm" className="h-9 gap-2 text-slate-600 bg-white">
+                        <Button variant="outline" size="sm" className="h-9 gap-2 text-muted-foreground bg-background">
                             <ArrowUpDown className="h-4 w-4" />
                             Sort
                         </Button>
@@ -147,7 +147,7 @@ export default function TasksPage() {
 
                     {/* Right Panel */}
                     {selectedTaskId && (
-                        <div className="h-full border-l bg-white shadow-xl z-20 animate-in slide-in-from-right duration-300">
+                        <div className="h-full border-l bg-background shadow-xl z-20 animate-in slide-in-from-right duration-300">
                             <TaskDetailPanel
                                 taskId={selectedTaskId}
                                 onClose={() => setSelectedTaskId(null)}

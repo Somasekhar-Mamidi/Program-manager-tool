@@ -26,6 +26,7 @@ import { useState } from "react"
 import { IntentBlock, MeetingQuestion, MeetingResource, ResourceType, MeetingNoteItem } from "@/types"
 import { cn } from "@/lib/utils"
 import { AddIntentDialog } from "@/components/features/calendar/AddIntentDialog"
+import { PageHeader } from "@/components/layout/PageHeader"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -133,22 +134,17 @@ export default function MeetingPrepPage() {
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
+            <PageHeader items={[{ label: 'Workspace' }, { label: 'Meeting Prep' }]}>
+                <AddIntentDialog date={new Date()} open={isAddMeetingOpen} onOpenChange={setIsAddMeetingOpen}>
+                    <Button size="sm" className="gap-2 h-8">
+                        <Plus className="h-4 w-4" />
+                        Schedule Meeting
+                    </Button>
+                </AddIntentDialog>
+            </PageHeader>
             <div className="flex-1 overflow-y-auto p-6">
                 <div className="space-y-8 max-w-5xl mx-auto">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex flex-col gap-2">
-                            <h1 className="text-4xl font-bold tracking-tight">Meeting Prep</h1>
-                            <p className="text-lg text-muted-foreground">
-                                Don't walk in empty-handed. Prepare questions, set context, and win the meeting.
-                            </p>
-                        </div>
-                        <AddIntentDialog date={new Date()} open={isAddMeetingOpen} onOpenChange={setIsAddMeetingOpen}>
-                            <Button size="lg" className="gap-2">
-                                <Plus className="h-5 w-5" />
-                                Schedule Meeting
-                            </Button>
-                        </AddIntentDialog>
-                    </div>
+
 
                     <Tabs defaultValue="upcoming" className="w-full">
                         <div className="flex items-center justify-between mb-8">
@@ -269,7 +265,8 @@ export default function MeetingPrepPage() {
                         (() => {
                             const meeting = meetings.find(m => m.id === selectedMeetingId)
                             if (!meeting) return null
-                            return <MeetingPrepCard meeting={meeting} isReadOnly={meeting.status === 'completed'} upcomingMeetings={upcomingMeetings} />
+                            const isPastMeeting = meeting.status === 'completed' || (isPast(new Date(meeting.date)) && !isToday(new Date(meeting.date)));
+                            return <MeetingPrepCard meeting={meeting} isReadOnly={isPastMeeting} upcomingMeetings={upcomingMeetings} />
                         })()
                     )}
                 </DialogContent>
@@ -842,9 +839,12 @@ function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }:
                                             Mark as Done
                                         </DropdownMenuItem>
                                     )}
-                                    {meeting.status === 'completed' && (
+                                    {isReadOnly && (
                                         <DropdownMenuItem
-                                            onClick={() => updateIntent(meeting.id, { status: 'planned' })}
+                                            onClick={() => updateIntent(meeting.id, {
+                                                status: 'planned',
+                                                date: format(new Date(), 'yyyy-MM-dd')
+                                            })}
                                         >
                                             <CalendarClock className="mr-2 h-4 w-4" />
                                             Move to Upcoming

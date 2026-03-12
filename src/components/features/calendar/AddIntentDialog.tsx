@@ -66,6 +66,7 @@ const formSchema = z.object({
     isMeeting: z.boolean(),
     isTaskResource: z.boolean().optional(),
     scheduledTime: z.string().optional(),
+    nudgeInterval: z.number().optional(),
     date: z.date(),
 }).refine(data => !data.isMeeting || !!data.scheduledTime, {
     message: "Time is required for meetings",
@@ -103,6 +104,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent, on
             isMeeting: intent?.isMeeting || false,
             isTaskResource: intent?.isTaskResource || isTaskResource || false, // Default from prop
             scheduledTime: intent?.scheduledTime || "",
+            nudgeInterval: intent?.nudgeInterval || 0,
             date: intent ? new Date(intent.date) : date,
         },
     })
@@ -118,6 +120,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent, on
                 isMeeting: intent?.isMeeting || false,
                 isTaskResource: intent?.isTaskResource || isTaskResource || false,
                 scheduledTime: intent?.scheduledTime || "",
+                nudgeInterval: intent?.nudgeInterval || 0,
                 date: intent ? new Date(intent.date) : date,
             })
         }
@@ -133,6 +136,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent, on
             isMeeting: values.isMeeting,
             isTaskResource: values.isTaskResource, // Pass to store
             scheduledTime: values.scheduledTime,
+            nudgeInterval: values.nudgeInterval,
         }
 
         if (intent) {
@@ -149,6 +153,7 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent, on
                 type: "work",
                 isMeeting: false,
                 scheduledTime: "",
+                nudgeInterval: 0,
                 date: date
             })
         }
@@ -252,6 +257,34 @@ export function AddIntentDialog({ date, children, open, onOpenChange, intent, on
                                             <SelectContent>
                                                 <SelectItem value="work">Work Execution</SelectItem>
                                                 <SelectItem value="social">Social Content</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="nudgeInterval"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Nudge Me Every</FormLabel>
+                                        <Select
+                                            onValueChange={(val) => field.onChange(parseInt(val, 10))}
+                                            value={field.value?.toString() || "0"}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select interval" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="0">Don't nudge me</SelectItem>
+                                                <SelectItem value="15">15 minutes</SelectItem>
+                                                <SelectItem value="30">30 minutes</SelectItem>
+                                                <SelectItem value="60">1 hour</SelectItem>
+                                                <SelectItem value="120">2 hours</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />

@@ -57,6 +57,9 @@ export interface IntentBlock {
     estimatedEffort: 'low' | 'medium' | 'high';
     type: IntentType;
     status: IntentStatus;
+    nudgeInterval?: number; // Interval in minutes for nudges (0 or undefined = no nudges)
+    lastNudgedAt?: number; // Timestamp of the last nudge
+    focusStartedAt?: number; // Timestamp when focus started
     microSteps: MicroStep[];
     createdAt: number;
     assignee?: {

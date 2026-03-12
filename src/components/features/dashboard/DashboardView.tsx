@@ -9,6 +9,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Brain, PenTool, CheckCircle2, TrendingUp, Activity, HelpCircle } from "lucide-react"
 import { GoalsWidget } from "../goals/GoalsWidget"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { GlowingEffect } from "@/components/ui/glowing-effect"
+import { TodaysFocusWidget } from "./TodaysFocusWidget"
 
 export function DashboardView() {
     const { intents } = useCalendarStore()
@@ -20,7 +22,7 @@ export function DashboardView() {
     const writingIntents = intents.filter(i => i.type === 'social' && i.status === 'completed').length
 
     return (
-        <div className="flex flex-col h-full bg-slate-50/50">
+        <div className="flex flex-col h-full bg-background overflow-y-auto">
             <PageHeader items={[{ label: 'Workspace' }, { label: 'Dashboard' }]}>
                 <div className="flex items-center gap-2">
                     <DayStartDialog />
@@ -33,33 +35,33 @@ export function DashboardView() {
                 {/* Stats Row - High Density */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <StatsCard
-                        title="Efficiency"
+                        title="Execution Rate"
                         value={`${completionRate}%`}
                         icon={<Activity className="h-4 w-4 text-emerald-500" />}
                         description="completion rate"
                         trend="+5%"
-                        tooltip="Percentage of completed intents out of total intents created."
+                        tooltip="Percentage of action items and milestones completed against total planned."
                     />
                     <StatsCard
-                        title="Writing Output"
+                        title="Deliverables"
                         value={writingIntents.toString()}
                         icon={<PenTool className="h-4 w-4 text-blue-500" />}
-                        description="pieces shipped"
-                        tooltip="Total number of completed 'Social Media' type intents."
+                        description="documents shipped"
+                        tooltip="Total number of PRDs, Charters, and strategic documents finalized."
                     />
                     <StatsCard
-                        title="Ideas Captured"
+                        title="Action Items"
                         value={totalIntents.toString()}
                         icon={<Brain className="h-4 w-4 text-indigo-500" />}
-                        description="total intents"
-                        tooltip="Total count of all intents (ideas, tasks, posts) in the system."
+                        description="tracked items"
+                        tooltip="Total count of active tasks, risks, and follow-ups in the system."
                     />
                     <StatsCard
-                        title="Focus Score"
+                        title="Deep Work Score"
                         value="8.5"
                         icon={<TrendingUp className="h-4 w-4 text-orange-500" />}
                         description="daily average"
-                        tooltip="Daily average focus score based on completed deep work sessions."
+                        tooltip="Daily average focus score based on uninterrupted time blocks logged."
                     />
                 </div>
 
@@ -67,50 +69,48 @@ export function DashboardView() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column: Focus & Goals (2/3 width) */}
                     <div className="lg:col-span-2 space-y-6">
+                        <TodaysFocusWidget />
                         <GoalsWidget />
-
-                        {/* Placeholder for Recent Activity or Strategy Highlights */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base font-semibold">Ready for Review</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-sm text-muted-foreground py-8 text-center italic">
-                                    No items pending review today.
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
 
-                    {/* Right Column: Context & Calendar (1/3 width) */}
                     <div className="space-y-6">
-                        <Card className="bg-slate-900 text-slate-100 border-slate-800">
-                            <CardHeader>
-                                <CardTitle className="text-base font-medium flex items-center gap-2">
-                                    <span>📅 Today</span>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-4xl font-bold">{format(new Date(), 'd')}</div>
-                                <div className="text-xl text-slate-400">{format(new Date(), 'MMMM')}</div>
-                                <div className="text-sm text-slate-500 mt-1">{format(new Date(), 'EEEE')}</div>
-                            </CardContent>
-                        </Card>
+                        <div className="relative rounded-[1.25rem] border-[0.75px] border-border p-2 md:rounded-[1.5rem] md:p-3">
+                            <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={3} variant="white" />
+                            <div className="relative z-10 border-[0.75px] rounded-xl overflow-hidden bg-background shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)] h-full">
+                                <Card className="border-none rounded-none shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                                            <span>📅 Today</span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-4xl font-bold">{format(new Date(), 'd')}</div>
+                                        <div className="text-xl text-slate-400">{format(new Date(), 'MMMM')}</div>
+                                        <div className="text-sm text-slate-500 mt-1">{format(new Date(), 'EEEE')}</div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
 
                         {/* Placeholder for "System Alerts" or Quick Actions */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Quick Actions</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <button className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-slate-100 transition-colors">
-                                    + Draft New Charter
-                                </button>
-                                <button className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-slate-100 transition-colors">
-                                    + Log Meeting Notes
-                                </button>
-                            </CardContent>
-                        </Card>
+                        <div className="relative rounded-[1.25rem] border-[0.75px] border-border p-2 md:rounded-[1.5rem] md:p-3">
+                            <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={3} variant="default" />
+                            <div className="relative z-10 border-[0.75px] rounded-xl overflow-hidden bg-background shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)] h-full">
+                                <Card className="border-none rounded-none shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Quick Actions</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        <button className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-slate-100 transition-colors">
+                                            + Draft New Charter
+                                        </button>
+                                        <button className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-slate-100 transition-colors">
+                                            + Log Meeting Notes
+                                        </button>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,34 +120,39 @@ export function DashboardView() {
 
 function StatsCard({ title, value, icon, description, trend, tooltip }: { title: string, value: string, icon: React.ReactNode, description: string, trend?: string, tooltip?: string }) {
     return (
-        <Card className="shadow-sm border-slate-200">
-            <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium text-muted-foreground">{title}</span>
-                        {tooltip && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p className="max-w-xs text-xs">{tooltip}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                    </div>
-                    {icon}
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-2xl font-bold tracking-tight">{value}</span>
-                    {trend && <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{trend}</span>}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                    {description}
-                </p>
-            </CardContent>
-        </Card>
+        <div className="relative h-full rounded-[1.25rem] border-[0.75px] border-border p-2 md:rounded-[1.5rem] md:p-3">
+            <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={3} variant="default" />
+            <div className="relative z-10 h-full border-[0.75px] rounded-xl overflow-hidden bg-background shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
+                <Card className="h-full border-none rounded-none shadow-none">
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-medium text-muted-foreground">{title}</span>
+                                {tooltip && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p className="max-w-xs text-xs">{tooltip}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                            </div>
+                            {icon}
+                        </div>
+                        <div className="mt-2 flex items-baseline gap-2">
+                            <span className="text-2xl font-bold tracking-tight">{value}</span>
+                            {trend && <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{trend}</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {description}
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     )
 }

@@ -1,4 +1,4 @@
-# My Social Calendar
+# DeepWork
 
 A productivity tool focused on intent-based scheduling and consistency for knowledge workers, built with Next.js, TailwindCSS, and Shadcn/UI.
 

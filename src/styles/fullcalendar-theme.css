@@ -1,0 +1,235 @@
+/* FullCalendar Theme Overrides for DeepWork */
+
+/* ===== Base Styling ===== */
+.fc {
+    --fc-border-color: var(--border);
+    --fc-page-bg-color: var(--background);
+    --fc-neutral-bg-color: var(--muted);
+    --fc-today-bg-color: hsl(from var(--primary) h s l / 0.06);
+    --fc-now-indicator-color: var(--primary);
+    --fc-event-border-color: transparent;
+    --fc-small-font-size: 0.8rem;
+    font-family: inherit;
+}
+
+/* Header toolbar */
+.fc .fc-toolbar {
+    display: none;
+    /* We use our own PageHeader */
+}
+
+/* ===== Day Grid (Month View) ===== */
+.fc .fc-daygrid-day-number {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 6px 8px;
+    color: var(--foreground);
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-radius: 9999px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px;
+    padding: 0;
+}
+
+.fc .fc-col-header-cell {
+    background: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+}
+
+.fc .fc-col-header-cell-cushion {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-foreground);
+    text-decoration: none;
+}
+
+.fc .fc-col-header-cell-cushion:hover {
+    text-decoration: none;
+}
+
+/* ===== Time Grid (Day/Week View) ===== */
+.fc .fc-timegrid-slot {
+    height: 48px;
+    border-bottom: 1px solid hsl(from var(--border) h s l / 0.5);
+}
+
+.fc .fc-timegrid-slot-label-cushion {
+    font-size: 0.7rem;
+    color: var(--muted-foreground);
+    padding: 0 8px;
+}
+
+.fc .fc-timegrid-now-indicator-line {
+    border-color: var(--primary);
+    border-width: 2px;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+    border-color: var(--primary);
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+}
+
+/* ===== Events ===== */
+.fc .fc-event {
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.1s ease;
+    overflow: hidden;
+}
+
+.fc .fc-event:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+.fc .fc-timegrid-event {
+    border-radius: 6px;
+    margin: 0 2px;
+}
+
+.fc .fc-timegrid-event .fc-event-main {
+    padding: 4px 8px;
+}
+
+.fc .fc-daygrid-event {
+    margin: 1px 3px;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+}
+
+/* Event dragging state */
+.fc .fc-event-dragging {
+    opacity: 0.85;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    transform: scale(1.02);
+}
+
+/* Event resizing handle */
+.fc .fc-event-resizer {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.fc .fc-event:hover .fc-event-resizer {
+    opacity: 1;
+}
+
+/* Custom event content */
+.fc-event-title-custom {
+    font-weight: 600;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-event-time-custom {
+    font-size: 0.65rem;
+    opacity: 0.8;
+    margin-top: 1px;
+}
+
+.fc-event-detail-custom {
+    font-size: 0.6rem;
+    opacity: 0.65;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Category color variants */
+.fc-event-work {
+    background: hsl(217 91% 60% / 0.15);
+    color: hsl(217 91% 45%);
+}
+
+.fc-event-meeting {
+    background: hsl(142 76% 36% / 0.15);
+    color: hsl(142 76% 30%);
+}
+
+.fc-event-personal {
+    background: hsl(347 77% 50% / 0.15);
+    color: hsl(347 77% 40%);
+}
+
+.fc-event-planning {
+    background: hsl(38 92% 50% / 0.15);
+    color: hsl(38 92% 35%);
+}
+
+.fc-event-default {
+    background: hsl(from var(--primary) h s l / 0.15);
+    color: var(--primary);
+}
+
+/* Dark mode overrides */
+.dark .fc-event-work {
+    background: hsl(217 91% 60% / 0.2);
+    color: hsl(217 91% 70%);
+}
+
+.dark .fc-event-meeting {
+    background: hsl(142 76% 36% / 0.2);
+    color: hsl(142 76% 60%);
+}
+
+.dark .fc-event-personal {
+    background: hsl(347 77% 50% / 0.2);
+    color: hsl(347 77% 65%);
+}
+
+.dark .fc-event-planning {
+    background: hsl(38 92% 50% / 0.2);
+    color: hsl(38 92% 65%);
+}
+
+.dark .fc-event-default {
+    background: hsl(from var(--primary) h s l / 0.2);
+    color: var(--primary);
+}
+
+/* ===== Scrollbar ===== */
+.fc .fc-scroller::-webkit-scrollbar {
+    width: 6px;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+/* ===== General polish ===== */
+.fc td,
+.fc th {
+    border-color: var(--border);
+}
+
+.fc .fc-scrollgrid {
+    border-color: var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.fc table {
+    border-collapse: separate;
+}

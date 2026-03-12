@@ -5,10 +5,12 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { MeetingPrepMonitor } from "@/components/features/meetings/MeetingPrepMonitor"
 import { DailyRolloverCheck } from "@/components/features/efficiency/DailyRolloverCheck"
+import { NudgeEngineWrapper } from "@/components/features/efficiency/NudgeEngineWrapper"
 import { Toaster } from "sonner";
 import { StoreHydration } from "@/components/features/store/StoreHydration";
 import { DataRecovery } from "@/components/debug/DataRecovery";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export default function RootLayout({
   children,
@@ -16,21 +18,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <SidebarProvider>
-          <ErrorBoundary>
-            <AppSidebar />
-            <MeetingPrepMonitor />
-            <DailyRolloverCheck />
-            <StoreHydration />
-            <DataRecovery />
-            <main className="w-full h-screen overflow-hidden flex flex-col bg-slate-50/50">
-              {children}
-            </main>
-            <Toaster />
-          </ErrorBoundary>
-        </SidebarProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider>
+            <ErrorBoundary>
+              <AppSidebar />
+              <MeetingPrepMonitor />
+              <DailyRolloverCheck />
+              <NudgeEngineWrapper />
+              <StoreHydration />
+              <DataRecovery />
+              <main className="w-full h-screen overflow-hidden flex flex-col bg-background">
+                {children}
+              </main>
+              <Toaster />
+            </ErrorBoundary>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

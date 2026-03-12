@@ -2,27 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase } from '../supabase'
 
-// Debounced Cloud Sync Helper
-const cloudSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const CLOUD_SYNC_DEBOUNCE_MS = 3000; // 3 seconds
-
-const debouncedCloudSync = (name: string, value: any) => {
-    const existing = cloudSyncTimers.get(name);
-    if (existing) clearTimeout(existing);
-
-    const timer = setTimeout(async () => {
-        cloudSyncTimers.delete(name);
-        try {
-            await supabase
-                .from('app_storage')
-                .upsert({ key: name, value: value }, { onConflict: 'key' });
-        } catch (e) {
-            console.error("Cloud sync failed", e);
-        }
-    }, CLOUD_SYNC_DEBOUNCE_MS);
-
-    cloudSyncTimers.set(name, timer);
-};
+// No auto-sync. Cloud sync is manual-only to prevent egress overuse.
 
 export interface StrategyStep {
     id: string;
@@ -33,6 +13,9 @@ export interface StrategyStep {
 
 export interface StrategyBoardState {
     steps: StrategyStep[];
+    cloudSyncStatus: 'idle' | 'syncing' | 'error' | 'success' | 'unsaved';
+    setCloudSyncStatus: (status: 'idle' | 'syncing' | 'error' | 'success' | 'unsaved') => void;
+    syncToCloud: () => Promise<void>;
     addStep: (content: string) => void;
     updateStep: (id: string, updates: Partial<StrategyStep>) => void;
     deleteStep: (id: string) => void;
@@ -44,6 +27,35 @@ export const useStrategyStore = create<StrategyBoardState>()(
     persist(
         (set, get) => ({
             steps: [],
+            cloudSyncStatus: 'idle',
+            setCloudSyncStatus: (status) => set({ cloudSyncStatus: status }),
+
+            syncToCloud: async () => {
+                const state = get();
+                if (state.cloudSyncStatus === 'syncing') return;
+
+                set({ cloudSyncStatus: 'syncing' });
+                try {
+                    const payload = {
+                        state: { steps: state.steps },
+                        version: 0
+                    };
+
+                    await supabase
+                        .from('app_storage')
+                        .upsert({ key: 'strategy-storage', value: payload }, { onConflict: 'key' });
+
+                    set({ cloudSyncStatus: 'success' });
+                    setTimeout(() => {
+                        if (useStrategyStore.getState().cloudSyncStatus === 'success') {
+                            set({ cloudSyncStatus: 'idle' });
+                        }
+                    }, 3000);
+                } catch (e) {
+                    console.error("Manual cloud sync failed", e);
+                    set({ cloudSyncStatus: 'error' });
+                }
+            },
 
             addStep: (content) => set((state) => {
                 const newStep: StrategyStep = {
@@ -72,6 +84,9 @@ export const useStrategyStore = create<StrategyBoardState>()(
         }),
         {
             name: 'strategy-storage',
+            partialize: (state) => ({
+                steps: state.steps
+            }),
             storage: {
                 getItem: async (name) => {
                     // 1. ALWAYS check Local Storage first
@@ -116,25 +131,13 @@ export const useStrategyStore = create<StrategyBoardState>()(
                         localStorage.setItem(name, JSON.stringify(value));
                     }
 
-                    // 2. DEBOUNCED sync to Supabase (reduces bandwidth)
-                    debouncedCloudSync(name, value);
-                },
-                removeItem: async (name) => {
-                    // 1. Remove from LocalStorage
-                    if (typeof window !== 'undefined') {
-                        localStorage.removeItem(name);
-                    }
-
-                    // 2. Remove from Supabase
-                    try {
-                        await supabase
-                            .from('app_storage')
-                            .delete()
-                            .eq('key', name);
-                    } catch (e) {
-                        console.error("Cloud delete failed", e);
+                    // 2. Mark as unsaved (NO auto-sync to Supabase)
+                    const currentStatus = useStrategyStore.getState().cloudSyncStatus;
+                    if (currentStatus === 'idle' || currentStatus === 'success') {
+                        useStrategyStore.getState().setCloudSyncStatus('unsaved');
                     }
                 },
+                removeItem: async () => { },
             },
         }
     )

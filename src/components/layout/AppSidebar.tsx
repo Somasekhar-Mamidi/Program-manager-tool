@@ -13,8 +13,10 @@ import {
   BarChart,
   User,
   History,
-  Layers
+  Layers,
+  Globe
 } from "lucide-react"
+
 
 import {
   Sidebar,
@@ -59,10 +61,10 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <div className="flex items-center gap-2 px-2 transition-all group-data-[collapsible=icon]:justify-center">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/30">
-                <BrainCircuit className="h-5 w-5" />
+                <Globe className="h-5 w-5" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                <span className="font-bold text-base tracking-tight text-sidebar-foreground">MSC</span>
+                <span className="font-bold text-base tracking-tight text-sidebar-foreground">DeepWork</span>
                 <span className="text-[10px] text-muted-foreground font-medium tracking-wider">PROGRAM MANAGER</span>
               </div>
             </div>

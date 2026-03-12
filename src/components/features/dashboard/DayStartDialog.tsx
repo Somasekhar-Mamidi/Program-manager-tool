@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { format } from "date-fns"
-import { Sun, Target, Plus, X, ArrowRight, CheckCircle2, AlignLeft, BarChart3 } from "lucide-react"
+import { format, subDays } from "date-fns"
+import { Sun, Target, Plus, X, ArrowRight, CheckCircle2, AlignLeft, BarChart3, Lightbulb } from "lucide-react"
 import { useCalendarStore } from "@/lib/store/calendar-store"
 import { Button } from "@/components/ui/button"
 import {
@@ -115,46 +115,56 @@ export function DayStartDialog() {
         setSelectedOutcomes([])
     }
 
-    // Render "Read Only" view if day started
+    // If day has been started, show a compact "View Day" button instead of the full inline card
     if (hasStartedDay) return (
-        <div className="flex flex-col gap-4 p-4 border rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
-            <div>
-                <div className="flex items-center gap-2 font-semibold text-orange-700 dark:text-orange-400 mb-2">
-                    <Sun className="h-5 w-5" />
-                    <h3>Today's Focus</h3>
-                </div>
-                <ul className="space-y-2">
-                    {daySummaries[today].topOutcomes.map((o, i) => (
-                        <li key={i} className="flex items-start gap-3 text-base text-foreground/90">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-medium text-muted-foreground">
-                                {i + 1}
-                            </span>
-                            <span className="pt-0.5">{o}</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 h-8 text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-900/20">
+                    <Sun className="h-3.5 w-3.5" />
+                    View Day
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[500px] p-0 gap-0 overflow-hidden">
+                <DialogHeader className="p-6 pb-4">
+                    <DialogTitle className="text-xl flex items-center gap-2">
+                        <Sun className="h-5 w-5 text-orange-500" />
+                        Today's Focus
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="px-6 pb-6 space-y-4">
+                    <ul className="space-y-2">
+                        {daySummaries[today].topOutcomes.map((o, i) => (
+                            <li key={i} className="flex items-start gap-3 text-sm text-foreground/90">
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-orange-50 dark:bg-orange-900/30 text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+                                    {i + 1}
+                                </span>
+                                <span className="pt-0.5">{o}</span>
+                            </li>
+                        ))}
+                    </ul>
 
-            {/* Stats Section */}
-            <div className="pt-4 border-t border-orange-200/50 dark:border-orange-900/50">
-                <div className="flex items-center justify-between text-sm text-muted-foreground mb-1.5">
-                    <span className="flex items-center gap-1">
-                        <BarChart3 className="h-4 w-4" /> Progress
-                    </span>
-                    <span className="font-medium">{Math.round((progressStats.completed / (progressStats.total || 1)) * 100)}%</span>
+                    {/* Progress */}
+                    <div className="pt-3 border-t">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                            <span className="flex items-center gap-1">
+                                <BarChart3 className="h-3.5 w-3.5" /> Progress
+                            </span>
+                            <span className="font-medium">{Math.round((progressStats.completed / (progressStats.total || 1)) * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-orange-200/50 dark:bg-orange-900/30 h-1.5 rounded-full overflow-hidden">
+                            <div
+                                className="bg-orange-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${(progressStats.completed / (progressStats.total || 1)) * 100}%` }}
+                            />
+                        </div>
+                        <div className="flex justify-between mt-1 text-[10px] text-muted-foreground/70">
+                            <span>{progressStats.completed} Completed</span>
+                            <span>{progressStats.total} Total</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="w-full bg-orange-200/50 dark:bg-orange-900/50 h-2 rounded-full overflow-hidden">
-                    <div
-                        className="bg-orange-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${(progressStats.completed / (progressStats.total || 1)) * 100}%` }}
-                    />
-                </div>
-                <div className="flex justify-between mt-1.5 text-xs text-muted-foreground/80">
-                    <div>{progressStats.completed} Completed</div>
-                    <div>{progressStats.total} Total Tasks</div>
-                </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     )
 
     return (
@@ -182,6 +192,24 @@ export function DayStartDialog() {
                 <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-6">
                     {step === 'dump' ? (
                         <div className="space-y-6">
+                            {/* Yesterday's Improvement Carry-Forward */}
+                            {(() => {
+                                const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+                                const yesterdayReflection = daySummaries[yesterday]?.reflection
+                                if (!yesterdayReflection?.improvements) return null
+                                return (
+                                    <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200/60 dark:border-amber-800/40">
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+                                            <Lightbulb className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">Yesterday you said:</p>
+                                            <p className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap">{yesterdayReflection.improvements}</p>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+
                             {/* Input Area */}
                             <div className="space-y-3 bg-muted/30 p-4 rounded-xl border">
                                 <form onSubmit={handleAddTask} className="flex flex-col gap-3">

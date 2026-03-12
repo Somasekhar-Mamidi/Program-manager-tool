@@ -1,57 +1,70 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutList, CalendarRange } from "lucide-react"
-import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from "date-fns"
-import { DayView } from "@/components/features/calendar/DayView"
-import { WeeklyCalendarGrid } from "@/components/features/calendar/WeeklyCalendarGrid"
-import { MonthView } from "@/components/features/calendar/MonthView"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { format } from "date-fns"
 import { useCalendarStore } from "@/lib/store/calendar-store"
 import { AddIntentDialog } from "./AddIntentDialog"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { FullCalendarView } from "./FullCalendarView"
+import FullCalendar from "@fullcalendar/react"
 
-type ViewMode = 'day' | 'week' | 'month'
+type ViewMode = 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'
+
+const viewLabels: Record<ViewMode, string> = {
+    timeGridDay: 'Day',
+    timeGridWeek: 'Week',
+    dayGridMonth: 'Month',
+}
 
 export function CalendarViewContainer() {
-    const [viewMode, setViewMode] = useState<ViewMode>('week')
-    // Default to Mock Data week (Oct 28, 2024 (Monday)) for demonstration purposes to match the screenshot
-    const [currentDate, setCurrentDate] = useState(new Date('2024-10-28T09:00:00'))
+    const [viewMode, setViewMode] = useState<ViewMode>('timeGridWeek')
+    const [currentDate, setCurrentDate] = useState(new Date())
+    const [headerTitle, setHeaderTitle] = useState('')
+    const calendarRef = useRef<FullCalendar>(null)
 
-    // We import intents here just to pass to views if needed, though WeeklyGrid uses store directly mostly
     const intents = useCalendarStore(state => state.intents)
 
-    const handlePrevious = () => {
-        if (viewMode === 'day') setCurrentDate(subDays(currentDate, 1))
-        if (viewMode === 'week') setCurrentDate(subWeeks(currentDate, 1))
-        if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1))
-    }
+    const handlePrevious = useCallback(() => {
+        const api = calendarRef.current?.getApi()
+        if (api) {
+            api.prev()
+            setCurrentDate(api.getDate())
+            setHeaderTitle(api.view.title)
+        }
+    }, [])
 
-    const handleNext = () => {
-        if (viewMode === 'day') setCurrentDate(addDays(currentDate, 1))
-        if (viewMode === 'week') setCurrentDate(addWeeks(currentDate, 1))
-        if (viewMode === 'month') setCurrentDate(addMonths(currentDate, 1))
-    }
+    const handleNext = useCallback(() => {
+        const api = calendarRef.current?.getApi()
+        if (api) {
+            api.next()
+            setCurrentDate(api.getDate())
+            setHeaderTitle(api.view.title)
+        }
+    }, [])
 
-    const handleToday = () => {
-        setCurrentDate(new Date()) // This returns to "real" today
-    }
+    const handleToday = useCallback(() => {
+        const api = calendarRef.current?.getApi()
+        if (api) {
+            api.today()
+            setCurrentDate(api.getDate())
+            setHeaderTitle(api.view.title)
+        }
+    }, [])
 
-    const handleDateSelect = (date: Date) => {
-        setCurrentDate(date)
-        setViewMode('day')
-    }
-
-    const headerTitle = {
-        day: format(currentDate, 'MMMM d, yyyy'),
-        week: `Week of ${format(currentDate, 'MMM d, yyyy')}`,
-        month: format(currentDate, 'MMMM yyyy'),
-    }[viewMode]
+    const handleViewChange = useCallback((newView: ViewMode) => {
+        setViewMode(newView)
+        const api = calendarRef.current?.getApi()
+        if (api) {
+            api.changeView(newView)
+            setHeaderTitle(api.view.title)
+        }
+    }, [])
 
     return (
-        <div className="flex flex-col h-full bg-slate-50/50">
+        <div className="flex flex-col h-full bg-background">
             <PageHeader items={[{ label: 'Workspace' }, { label: 'Calendar' }]}>
-                {/* Toolbar Actions */}
                 <div className="flex items-center gap-4">
                     {/* Date Navigation */}
                     <div className="flex items-center gap-1 border rounded-md p-0.5 bg-background shadow-sm">
@@ -67,35 +80,22 @@ export function CalendarViewContainer() {
                     </div>
 
                     <span className="text-sm font-semibold min-w-[170px] text-center hidden md:block">
-                        {headerTitle}
+                        {headerTitle || format(currentDate, 'MMMM yyyy')}
                     </span>
 
                     {/* View Switcher */}
                     <div className="flex p-0.5 bg-muted rounded-lg border hidden md:flex">
-                        <Button
-                            variant={viewMode === 'day' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => setViewMode('day')}
-                        >
-                            Day
-                        </Button>
-                        <Button
-                            variant={viewMode === 'week' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => setViewMode('week')}
-                        >
-                            Week
-                        </Button>
-                        <Button
-                            variant={viewMode === 'month' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => setViewMode('month')}
-                        >
-                            Month
-                        </Button>
+                        {(Object.entries(viewLabels) as [ViewMode, string][]).map(([key, label]) => (
+                            <Button
+                                key={key}
+                                variant={viewMode === key ? 'secondary' : 'ghost'}
+                                size="sm"
+                                className="h-7 px-2.5 text-xs"
+                                onClick={() => handleViewChange(key)}
+                            >
+                                {label}
+                            </Button>
+                        ))}
                     </div>
 
                     <div className="border-l pl-4 ml-2">
@@ -104,24 +104,13 @@ export function CalendarViewContainer() {
                 </div>
             </PageHeader>
 
-            {/* View Content */}
-            <div className="flex-1 overflow-auto p-4 lg:p-6 w-full max-w-[1800px] mx-auto">
-                {viewMode === 'day' && (
-                    <DayView currentDate={currentDate} />
-                )}
-                {viewMode === 'week' && (
-                    <WeeklyCalendarGrid
-                        currentDate={currentDate}
-                        onSelectDate={handleDateSelect}
-                    />
-                )}
-                {viewMode === 'month' && (
-                    <MonthView
-                        currentDate={currentDate}
-                        intents={intents}
-                        onSelectDate={handleDateSelect}
-                    />
-                )}
+            {/* FullCalendar View */}
+            <div className="flex-1 overflow-hidden p-4 lg:p-6">
+                <FullCalendarView
+                    ref={calendarRef}
+                    currentDate={currentDate}
+                    viewMode={viewMode}
+                />
             </div>
         </div>
     )
