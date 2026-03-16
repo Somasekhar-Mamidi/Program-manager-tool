@@ -60,6 +60,7 @@ export interface IntentBlock {
     nudgeInterval?: number; // Interval in minutes for nudges (0 or undefined = no nudges)
     lastNudgedAt?: number; // Timestamp of the last nudge
     focusStartedAt?: number; // Timestamp when focus started
+    nudgeCount?: number; // Total number of nudges fired for this intent
     microSteps: MicroStep[];
     createdAt: number;
     assignee?: {

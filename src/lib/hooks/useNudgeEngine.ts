@@ -76,9 +76,10 @@ export function useNudgeEngine() {
                         startTabBlink(`(1) ⚠️ Focus: ${intent.objective.substring(0, 10)}...`);
                     }
 
-                    // 4. Update the DB so we don't spam them every minute thereafter
+                    // 4. Update the DB so we don't spam them every minute thereafter and track evasion
                     updateIntent(intent.id, {
-                        lastNudgedAt: now.getTime()
+                        lastNudgedAt: now.getTime(),
+                        nudgeCount: (intent.nudgeCount || 0) + 1
                     });
                 }
             });
