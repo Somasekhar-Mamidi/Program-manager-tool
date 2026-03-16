@@ -11,6 +11,7 @@ import { StoreHydration } from "@/components/features/store/StoreHydration";
 import { DataRecovery } from "@/components/debug/DataRecovery";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ThemeProvider } from "@/components/theme-provider";
+import { OnboardingTourWrapper } from "@/components/features/onboarding/OnboardingTourWrapper";
 
 export default function RootLayout({
   children,
@@ -34,6 +35,7 @@ export default function RootLayout({
               <NudgeEngineWrapper />
               <StoreHydration />
               <DataRecovery />
+              <OnboardingTourWrapper />
               <main className="w-full h-screen overflow-hidden flex flex-col bg-background">
                 {children}
               </main>

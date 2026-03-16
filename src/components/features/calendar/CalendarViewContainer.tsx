@@ -105,7 +105,7 @@ export function CalendarViewContainer() {
             </PageHeader>
 
             {/* FullCalendar View */}
-            <div className="flex-1 overflow-hidden p-4 lg:p-6">
+            <div className="flex-1 overflow-hidden p-4 lg:p-6 tour-calendar-view">
                 <FullCalendarView
                     ref={calendarRef}
                     currentDate={currentDate}

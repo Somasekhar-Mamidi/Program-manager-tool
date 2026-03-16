@@ -150,7 +150,7 @@ export default function StrategyBoard() {
                 </div>
 
                 {/* Strategy List */}
-                <div className="space-y-2">
+                <div className="space-y-2 tour-charters-list">
                     {localSteps.length === 0 ? (
                         <div className="text-center py-20 border-2 border-dashed rounded-xl border-slate-200">
                             <StickyNote className="h-10 w-10 mx-auto mb-3 text-slate-300" />

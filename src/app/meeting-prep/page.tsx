@@ -142,7 +142,7 @@ export default function MeetingPrepPage() {
                     </Button>
                 </AddIntentDialog>
             </PageHeader>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 tour-meeting-questions">
                 <div className="space-y-8 max-w-5xl mx-auto">
 
 

@@ -138,7 +138,7 @@ export default function TaskResourcesPage() {
                     </Button>
                 </AddIntentDialog>
             </PageHeader>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 tour-task-resources">
                 <div className="space-y-8 max-w-5xl mx-auto">
 
 

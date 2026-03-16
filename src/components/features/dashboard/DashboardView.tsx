@@ -37,7 +37,9 @@ export function DashboardView() {
         <div className="flex flex-col h-full bg-background overflow-y-auto">
             <PageHeader items={[{ label: 'Workspace' }, { label: 'Dashboard' }]}>
                 <div className="flex items-center gap-2">
-                    <DayStartDialog />
+                    <div className="tour-start-day-btn">
+                        <DayStartDialog />
+                    </div>
                     <DayEndDialog />
                 </div>
             </PageHeader>
@@ -45,7 +47,7 @@ export function DashboardView() {
             <div className="p-6 space-y-6 max-w-[1600px] mx-auto w-full">
 
                 {/* Stats Row - High Density */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 tour-dashboard-stats">
                     <StatsCard
                         title="Execution Rate"
                         value={`${executionRate}%`}

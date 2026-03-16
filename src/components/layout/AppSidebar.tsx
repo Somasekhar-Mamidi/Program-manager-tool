@@ -14,7 +14,8 @@ import {
   User,
   History,
   Layers,
-  Globe
+  Globe,
+  HelpCircle
 } from "lucide-react"
 
 
@@ -32,6 +33,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
+import { useCalendarStore } from "@/lib/store/calendar-store"
 
 // Modules: The core functional areas
 const modules = [
@@ -76,11 +78,11 @@ export function AppSidebar() {
 
         {/* Modules Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-xs font-bold tracking-wider uppercase mt-4 mb-2 group-data-[collapsible=icon]:hidden">
-            Modules
+          <SidebarGroupLabel className="text-muted-foreground text-xs font-bold tracking-wider uppercase mb-2 group-data-[collapsible=icon]:hidden">
+            Workspace
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
+            <SidebarMenu className="gap-2 tour-sidebar-nav">
               {modules.map((item) => {
                 const isActive = pathname === item.url || pathname.startsWith(item.url + "/")
                 return (
@@ -138,6 +140,17 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 )
               })}
+
+              {/* Tutorial Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => useCalendarStore.getState().setIsTourRunning(true)}
+                  className="h-9 mb-0.5 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-muted-foreground cursor-pointer"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  <span>Tutorial</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

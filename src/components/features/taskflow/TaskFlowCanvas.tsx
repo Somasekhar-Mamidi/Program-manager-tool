@@ -113,7 +113,7 @@ function TaskFlowCanvasContent() {
                 </div>
             </PageHeader>
 
-            <div className="flex-1 w-full relative">
+            <div className="flex-1 w-full relative tour-taskflow-board">
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}

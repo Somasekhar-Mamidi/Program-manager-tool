@@ -8,6 +8,14 @@ import { CalendarStateSchema } from '@/lib/schemas';
 interface CalendarState {
     intents: IntentBlock[];
     daySummaries: Record<string, DaySummary>; // Keyed by date YYYY-MM-DD
+    
+    // Onboarding
+    hasSeenTour: boolean;
+    setHasSeenTour: (hasSeen: boolean) => void;
+    isTourRunning: boolean;
+    setIsTourRunning: (run: boolean) => void;
+    tourStepIndex: number;
+    setTourStepIndex: (index: number) => void;
 
     addIntent: (intent: Omit<IntentBlock, 'id' | 'createdAt' | 'microSteps' | 'status'>) => void;
     updateIntent: (id: string, updates: Partial<IntentBlock>) => void;
@@ -41,6 +49,12 @@ interface CalendarState {
 export const useCalendarStore = create<CalendarState>()(
     persist(
         (set) => ({
+            hasSeenTour: false,
+            setHasSeenTour: (hasSeen) => set({ hasSeenTour: hasSeen }),
+            isTourRunning: false,
+            setIsTourRunning: (run) => set({ isTourRunning: run }),
+            tourStepIndex: 0,
+            setTourStepIndex: (index) => set({ tourStepIndex: index }),
             cloudSyncStatus: 'idle',
             setCloudSyncStatus: (status) => set({ cloudSyncStatus: status }),
 
