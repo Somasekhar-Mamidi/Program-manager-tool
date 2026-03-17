@@ -263,18 +263,21 @@ export const useTaskFlowStore = create<TaskFlowState>()(
             }),
             storage: {
                 getItem: async (name) => {
+                    // EDGE CASE FIX: Prevent SSR from massively hitting Supabase egress
+                    if (typeof window === 'undefined') {
+                        return null;
+                    }
+
                     // 1. ALWAYS check Local Storage first
-                    if (typeof window !== 'undefined') {
-                        const local = localStorage.getItem(name);
-                        if (local) {
-                            try {
-                                const parsed = JSON.parse(local);
-                                if (parsed && parsed.state) {
-                                    return parsed; // Return OBJECT
-                                }
-                            } catch (e) {
-                                console.warn("Local storage parse failed", e);
+                    const local = localStorage.getItem(name);
+                    if (local) {
+                        try {
+                            const parsed = JSON.parse(local);
+                            if (parsed && parsed.state) {
+                                return parsed; // Return OBJECT
                             }
+                        } catch (e) {
+                            console.warn("Local storage parse failed", e);
                         }
                     }
 

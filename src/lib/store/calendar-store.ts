@@ -514,10 +514,15 @@ export const useCalendarStore = create<CalendarState>()(
             }),
             storage: {
                 getItem: async (name) => {
+                    // EDGE CASE FIX: Prevent Next.js Server-Side Rendering (SSR) from relentlessly hitting Supabase
+                    // because localStorage is undefined on the server. Only hydrate on the browser client!
+                    if (typeof window === 'undefined') {
+                        return null;
+                    }
+
                     // 1. ALWAYS check Local Storage first
-                    if (typeof window !== 'undefined') {
-                        const local = localStorage.getItem(name);
-                        if (local) {
+                    const local = localStorage.getItem(name);
+                    if (local) {
                             try {
                                 const parsed = JSON.parse(local);
                                 if (parsed && parsed.state) {
@@ -537,7 +542,6 @@ export const useCalendarStore = create<CalendarState>()(
                                 console.warn("Local storage parse failed", e);
                             }
                         }
-                    }
 
                     // 2. If Local is empty, try Cloud
                     try {

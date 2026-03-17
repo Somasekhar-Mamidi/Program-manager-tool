@@ -89,10 +89,14 @@ export const useStrategyStore = create<StrategyBoardState>()(
             }),
             storage: {
                 getItem: async (name) => {
+                    // EDGE CASE FIX: Prevent SSR from massively hitting Supabase egress
+                    if (typeof window === 'undefined') {
+                        return null;
+                    }
+
                     // 1. ALWAYS check Local Storage first
-                    if (typeof window !== 'undefined') {
-                        const local = localStorage.getItem(name);
-                        if (local) {
+                    const local = localStorage.getItem(name);
+                    if (local) {
                             try {
                                 const parsed = JSON.parse(local);
                                 if (parsed && parsed.state) {
@@ -102,7 +106,6 @@ export const useStrategyStore = create<StrategyBoardState>()(
                                 console.warn("Local storage parse failed", e);
                             }
                         }
-                    }
 
                     // 2. If Local is empty, try Cloud
                     try {
