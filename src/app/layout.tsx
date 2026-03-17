@@ -8,6 +8,7 @@ import { DailyRolloverCheck } from "@/components/features/efficiency/DailyRollov
 import { NudgeEngineWrapper } from "@/components/features/efficiency/NudgeEngineWrapper"
 import { Toaster } from "sonner";
 import { StoreHydration } from "@/components/features/store/StoreHydration";
+import { CloudSyncManager } from "@/components/features/store/CloudSyncManager";
 import { DataRecovery } from "@/components/debug/DataRecovery";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -34,6 +35,7 @@ export default function RootLayout({
               <DailyRolloverCheck />
               <NudgeEngineWrapper />
               <StoreHydration />
+              <CloudSyncManager />
               <DataRecovery />
               <OnboardingTourWrapper />
               <main className="w-full h-screen overflow-hidden flex flex-col bg-background">

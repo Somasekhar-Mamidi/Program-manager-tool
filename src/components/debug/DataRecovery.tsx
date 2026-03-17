@@ -34,8 +34,7 @@ export function DataRecovery() {
             }
         }
         checkData()
-        const interval = setInterval(checkData, 5000)
-        return () => clearInterval(interval)
+        // Removed aggressive setInterval to eliminate mass egress
     }, [])
 
     const handleBackup = async () => {

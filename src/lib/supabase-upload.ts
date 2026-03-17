@@ -11,6 +11,12 @@ export async function uploadFileToStorage(file: File | Blob, fileName?: string):
     const ext = name.split('.').pop() || 'bin';
     const uniquePath = `${crypto.randomUUID()}.${ext}`;
 
+    // EDGE CASE: Enforce 10MB file limit to prevent memory locks and egress abuse
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File exceeds the maximum 10MB limit.");
+    }
+
     try {
         const { data, error } = await supabase.storage
             .from(BUCKET_NAME)

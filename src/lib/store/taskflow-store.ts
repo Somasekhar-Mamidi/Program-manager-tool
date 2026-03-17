@@ -118,10 +118,13 @@ export const useTaskFlowStore = create<TaskFlowState>()(
             },
 
             updateTaskPosition: (id, x, y) => {
-                // Removed auto-phase switching based on X position to allow free-form layout
+                // Clamp coordinates to prevent infinite canvas issues
+                const clampedX = Math.max(-10000, Math.min(10000, x));
+                const clampedY = Math.max(-10000, Math.min(10000, y));
+
                 set((state) => ({
                     tasks: state.tasks.map((task) =>
-                        task.id === id ? { ...task, x, y } : task
+                        task.id === id ? { ...task, x: clampedX, y: clampedY } : task
                     ),
                 }));
             },

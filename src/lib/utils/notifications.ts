@@ -1,8 +1,15 @@
 export const playNudgeChime = () => {
     try {
-        // A gentle, high-quality, short sine-wave "tick/chime" sound encoded in base64.
-        // This avoids needing an external MP3 file in the public folder just for a notification.
-        const audio = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExEAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
+        // EDGE CASE: Multi-tab debounce lock. Prevent echoing if DeepWork is open in multiple tabs
+        if (typeof window !== 'undefined') {
+            const lastPlayed = localStorage.getItem('last_nudge_chime_time');
+            const now = Date.now();
+            if (lastPlayed && (now - parseInt(lastPlayed, 10)) < 2000) {
+                // Another tab played the chime within the last 2 seconds. Abort playback.
+                return;
+            }
+            localStorage.setItem('last_nudge_chime_time', now.toString());
+        }
 
         // We actually use a browser synthesized beep for maximum reliability without files
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
