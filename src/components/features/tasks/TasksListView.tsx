@@ -134,6 +134,25 @@ export function TasksListView({ onSelectTask, selectedTaskId, tasks: initialTask
                     </Select>
                 </div>
 
+                {/* Nudge Timer */}
+                <div className="w-[120px] px-4" onClick={(e) => e.stopPropagation()}>
+                    <Select
+                        defaultValue={task.nudgeInterval?.toString() || "0"}
+                        onValueChange={(value) => updateIntent(task.id, { nudgeInterval: parseInt(value) })}
+                    >
+                        <SelectTrigger className={cn("h-8 border-transparent bg-transparent hover:bg-slate-100 px-2 -ml-2 w-auto min-w-[90px]", task.nudgeInterval ? "text-orange-600 font-medium" : "text-slate-500")}>
+                            <SelectValue placeholder="Off" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="0">Off</SelectItem>
+                            <SelectItem value="15">15 mins</SelectItem>
+                            <SelectItem value="30">30 mins</SelectItem>
+                            <SelectItem value="60">1 hour</SelectItem>
+                            <SelectItem value="120">2 hours</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 {/* Priority */}
                 <div className="w-[120px] px-4" onClick={(e) => e.stopPropagation()}>
                     <Select
@@ -207,6 +226,11 @@ export function TasksListView({ onSelectTask, selectedTaskId, tasks: initialTask
                 <div className="w-[150px] px-4 font-semibold text-slate-700 text-sm">
                     <div className="flex items-center gap-2 cursor-pointer hover:text-slate-900" onClick={() => handleSort('status')}>
                         Status <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                </div>
+                <div className="w-[120px] px-4 font-semibold text-slate-700 text-sm">
+                    <div className="flex items-center gap-2 cursor-pointer hover:text-slate-900" onClick={() => handleSort('nudgeInterval')}>
+                        Nudge <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                 </div>
                 <div className="w-[120px] px-4 font-semibold text-slate-700 text-sm">
