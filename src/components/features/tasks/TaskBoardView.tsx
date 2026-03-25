@@ -154,6 +154,7 @@ export function TaskBoardView({ intents: propIntents }: { intents?: IntentBlock[
                                 <ArrowUpDown className={cn("h-3 w-3 transition-opacity", sortConfig.key === 'status' ? "opacity-100" : "opacity-0 group-hover:opacity-50")} />
                             </div>
                         </TableHead>
+                        <TableHead className="w-[120px]">Nudge</TableHead>
                         <TableHead className="w-[150px]">Progress</TableHead>
                         <TableHead className="w-[250px]">Next Action</TableHead>
                         <TableHead>Blockers / Notes</TableHead>
@@ -225,6 +226,25 @@ export function TaskBoardView({ intents: propIntents }: { intents?: IntentBlock[
                                                     <SelectItem value="blocked">Blocked</SelectItem>
                                                     <SelectItem value="completed">Completed</SelectItem>
                                                     <SelectItem value="deferred">Deferred</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <Select
+                                                defaultValue={intent.nudgeInterval?.toString() || "0"}
+                                                onValueChange={(value) => updateIntent(intent.id, { nudgeInterval: parseInt(value) })}
+                                            >
+                                                <SelectTrigger className={cn("h-8 border-transparent bg-transparent hover:bg-slate-100 px-2 -ml-2 w-auto min-w-[90px]", intent.nudgeInterval ? "text-orange-600 font-medium" : "text-muted-foreground")}>
+                                                    <SelectValue placeholder="Off" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="0">Off</SelectItem>
+                                                    <SelectItem value="15">15 mins</SelectItem>
+                                                    <SelectItem value="30">30 mins</SelectItem>
+                                                    <SelectItem value="60">1 hour</SelectItem>
+                                                    <SelectItem value="120">2 hours</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
