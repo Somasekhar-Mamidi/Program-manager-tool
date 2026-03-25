@@ -251,7 +251,7 @@ export function TasksListView({ onSelectTask, selectedTaskId, tasks: initialTask
             </div>
 
             {/* List Body */}
-            <div className="flex-1">
+            <div className="flex-1 min-h-0 relative w-full h-full">
                 {tasks.length > 0 ? (
                     <AutoSizerAny>
                         {({ height, width }: { height: number; width: number }) => (
