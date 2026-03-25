@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format, subDays } from "date-fns"
 import { Sun, Target, Plus, X, ArrowRight, CheckCircle2, AlignLeft, BarChart3, Lightbulb } from "lucide-react"
 import { useCalendarStore } from "@/lib/store/calendar-store"
@@ -37,10 +37,17 @@ export function DayStartDialog() {
     const [showNotesInput, setShowNotesInput] = useState(false)
 
     const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
-
+    
+    const [isMounted, setIsMounted] = useState(false)
+    
     // Formatting
     const today = format(new Date(), 'yyyy-MM-dd')
     const { intents, daySummaries, updateDaySummary, addIntent } = useCalendarStore()
+
+    // Hydration guard
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     // Existing Data
     const hasStartedDay = !!daySummaries[today]?.topOutcomes?.length
@@ -114,6 +121,15 @@ export function DayStartDialog() {
         setNewTasks([])
         setSelectedOutcomes([])
     }
+
+    // Hydration Fallback: Render a dumb button that looks like the server render
+    // to prevent Radix UI useId() mismatch crashes
+    if (!isMounted) return (
+        <Button className="w-full gap-2 bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white border-0 opacity-50 cursor-default">
+            <Sun className="h-4 w-4" />
+            Loading Day...
+        </Button>
+    )
 
     // If day has been started, show a compact "View Day" button instead of the full inline card
     if (hasStartedDay) return (
