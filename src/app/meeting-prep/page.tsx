@@ -327,7 +327,7 @@ function SortableMeetingItem({ id, children, viewMode }: { id: string, children:
     );
 }
 
-function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }: { meeting: IntentBlock, isReadOnly?: boolean, upcomingMeetings?: IntentBlock[] }) {
+export function MeetingPrepCard({ meeting, isReadOnly = false, upcomingMeetings = [] }: { meeting: IntentBlock, isReadOnly?: boolean, upcomingMeetings?: IntentBlock[] }) {
     const { updateIntent, deleteIntent } = useCalendarStore()
 
     const [newQuestion, setNewQuestion] = useState("")
